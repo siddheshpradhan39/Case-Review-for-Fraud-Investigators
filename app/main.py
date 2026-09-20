@@ -1,7 +1,10 @@
 """FastAPI app: JSON API + static SPA.   Run:  python -m uvicorn app.main:app --port 8000"""
 import asyncio
 import csv
+import base64
+import hmac
 import io
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -493,6 +496,26 @@ def index():
     """Serve index.html with asset URLs versioned by file mtime, so a changed app.js/styles.css is never served from browser cache."""
     html = (WEB / "index.html").read_text().replace("/static/app.js", f"/static/app.js?v={_asset_version()}").replace("/static/styles.css", f"/static/styles.css?v={_asset_version()}")
     return HTMLResponse(html)
+
+
+@app.middleware("http")
+async def password_gate(request, call_next):
+    """Optional shared-password gate (HTTP Basic). Enabled only when APP_PASSWORD is set; any username is accepted."""
+    pw = os.environ.get("APP_PASSWORD")
+    if pw and request.url.path != "/healthz":
+        try:
+            given = base64.b64decode(request.headers.get("authorization", "")[6:]).decode().partition(":")[2]
+        except Exception:
+            given = ""
+        if not hmac.compare_digest(given.encode(), pw.encode()):
+            return JSONResponse({"detail": "auth required"}, status_code=401,
+                                headers={"WWW-Authenticate": 'Basic realm="Junior AI Investigator"'})
+    return await call_next(request)
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
 
 
 @app.middleware("http")

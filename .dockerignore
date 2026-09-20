@@ -1,0 +1,6 @@
+data/*.db
+data/cassette.json
+tests
+docs
+.env
+.venv

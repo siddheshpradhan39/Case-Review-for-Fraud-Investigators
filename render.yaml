@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: junior-ai-investigator
+    runtime: docker
+    plan: starter          # persistent disks need a paid plan; free tier sleeps and wipes the DB
+    healthCheckPath: /healthz
+    disk: {name: data, mountPath: /var/data, sizeGB: 1}
+    envVars:
+      - {key: OPENROUTER_API_KEY, sync: false}
+      - {key: APP_PASSWORD, sync: false}
+      - {key: OPENROUTER_MODELS, value: "deepseek/deepseek-v4-flash-0731:free,qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free,nvidia/nemotron-3-super-120b-a12b:free"}

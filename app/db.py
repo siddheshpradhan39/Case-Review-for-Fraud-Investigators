@@ -1,11 +1,13 @@
 """SQLite persistence. One connection per call (cheap for SQLite, thread-safe with FastAPI's threadpool)."""
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "cases.db"
+# DATA_DIR lets a host mount a persistent volume; defaults to the repo data/ folder
+DB_PATH = Path(os.environ.get("DATA_DIR") or Path(__file__).resolve().parent.parent / "data") / "cases.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS cases (
