@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Junior AI Investigator</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">◈</span> Junior AI Investigator <small>LTC fraud referrals</small></div>
+  <nav id="nav">
+    <a href="#/briefing" data-r="briefing">Morning briefing</a>
+    <a href="#/queue" data-r="queue">Queue</a>
+    <a href="#/rules" data-r="rules">Rules</a>
+    <a href="#/blocklist" data-r="blocklist">Blocklist</a>
+    <a href="#/supervisor" data-r="supervisor">Supervisor <span id="escBadge" class="badge hidden"></span></a>
+    <a href="#/audit" data-r="audit">Audit log</a>
+  </nav>
+  <div class="right">
+    <span id="llmPill" class="pill" title="LLM status"></span>
+    <select id="persona" title="Acting as">
+      <option value="Alex Rivera|investigator">Alex Rivera · Investigator</option>
+      <option value="Sam Okafor|supervisor">Sam Okafor · Supervisor</option>
+    </select>
+  </div>
+</header>
+<main id="view"></main>
+<div id="modal" class="modal hidden"><div class="modal-card" id="modalCard"></div></div>
+<div id="toast" class="toast hidden"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

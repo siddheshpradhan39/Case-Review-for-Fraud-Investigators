@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/*.db
+.pytest_cache/
+.claude/
+data/cassette.json
+
+# Office lock/temp files (created while a .pptx is open)
+~$*
+.DS_Store

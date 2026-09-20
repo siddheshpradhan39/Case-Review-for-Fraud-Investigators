@@ -1,0 +1,224 @@
+{
+  "n_cases": 50,
+  "signals": {
+    "weekly_visit_frequency": {
+      "elevated_threshold": 5.5,
+      "extreme_threshold": 10,
+      "groups": {
+        "baseline": [
+          2,
+          5,
+          32
+        ],
+        "elevated": [
+          6,
+          9,
+          10
+        ],
+        "extreme": [
+          12,
+          18,
+          8
+        ]
+      },
+      "median": 5.0,
+      "p75": 7.75,
+      "p90": 13.100000000000001,
+      "max": 18
+    },
+    "member_provider_distance_miles": {
+      "elevated_threshold": 47,
+      "extreme_threshold": 160.0,
+      "groups": {
+        "baseline": [
+          3,
+          42,
+          36
+        ],
+        "elevated": [
+          52,
+          114,
+          10
+        ],
+        "extreme": [
+          205,
+          247,
+          4
+        ]
+      },
+      "median": 22.0,
+      "p75": 53.5,
+      "p90": 94.20000000000003,
+      "max": 247
+    },
+    "prior_claims_last_12mo": {
+      "elevated_threshold": 2.5,
+      "extreme_threshold": 7.0,
+      "groups": {
+        "baseline": [
+          0,
+          2,
+          33
+        ],
+        "elevated": [
+          3,
+          6,
+          10
+        ],
+        "extreme": [
+          8,
+          12,
+          7
+        ]
+      },
+      "median": 2.0,
+      "p75": 4.75,
+      "p90": 9.0,
+      "max": 12
+    },
+    "weekend_billing_ratio": {
+      "elevated_threshold": 0.17,
+      "extreme_threshold": 0.42,
+      "groups": {
+        "baseline": [
+          0,
+          0.16,
+          31
+        ],
+        "elevated": [
+          0.18,
+          0.4,
+          11
+        ],
+        "extreme": [
+          0.44,
+          0.72,
+          8
+        ]
+      },
+      "median": 0.12,
+      "p75": 0.2675,
+      "p90": 0.512,
+      "max": 0.72
+    },
+    "amount_vs_peer_avg_pct": {
+      "elevated_threshold": 16,
+      "extreme_threshold": 76,
+      "groups": {
+        "baseline": [
+          -15,
+          13,
+          32
+        ],
+        "elevated": [
+          19,
+          57,
+          11
+        ],
+        "extreme": [
+          95,
+          175,
+          7
+        ]
+      },
+      "median": 8.0,
+      "p75": 34.5,
+      "p90": 101.50000000000006,
+      "max": 175
+    },
+    "round_dollar_billing_ratio": {
+      "elevated_threshold": 0.29,
+      "extreme_threshold": 0.62,
+      "groups": {
+        "baseline": [
+          0.01,
+          0.25,
+          32
+        ],
+        "elevated": [
+          0.33,
+          0.57,
+          12
+        ],
+        "extreme": [
+          0.68,
+          0.89,
+          6
+        ]
+      },
+      "median": 0.18,
+      "p75": 0.425,
+      "p90": 0.684,
+      "max": 0.89
+    },
+    "implied_weekly_travel_miles": {
+      "elevated_threshold": 1800.0,
+      "extreme_threshold": 4510.0,
+      "groups": {
+        "baseline": [
+          12,
+          1242,
+          42
+        ],
+        "elevated": [
+          2352,
+          4104,
+          4
+        ],
+        "extreme": [
+          4920,
+          7552,
+          4
+        ]
+      },
+      "median": 178.0,
+      "p75": 636.0,
+      "p90": 2840.400000000002,
+      "max": 7552
+    }
+  },
+  "binary": {
+    "duplicate_service_billed": {
+      "count": 13,
+      "rate": 0.26
+    },
+    "shared_contact_with_provider": {
+      "count": 12,
+      "rate": 0.24
+    },
+    "recent_policy_change_flag": {
+      "count": 12,
+      "rate": 0.24
+    },
+    "service_overlap_other_provider": {
+      "count": 10,
+      "rate": 0.2
+    }
+  },
+  "amount": {
+    "p75": 13130.75,
+    "p85": 23001.399999999994,
+    "p90": 32644.600000000002,
+    "median": 4665.0
+  },
+  "log_amount_robust_z": {
+    "outlier_threshold": 0.72,
+    "groups": {
+      "baseline": [
+        -1.47,
+        -0.67,
+        10
+      ],
+      "elevated": [
+        -0.51,
+        0.67,
+        25
+      ],
+      "extreme": [
+        0.76,
+        2.3,
+        15
+      ]
+    }
+  }
+}
