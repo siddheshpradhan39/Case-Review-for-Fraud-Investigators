@@ -4,7 +4,7 @@
 
 > Built as a take-home prototype for the "AI-First Case Review" brief. The 50 claims are synthetic and unlabelled; see [Limitations](#limitations-and-honest-caveats).
 
-![How a case flows through the system](docs/architecture_flow.png)
+![System architecture](docs/architecture.png)
 
 ---
 
@@ -126,7 +126,7 @@ CSV → derived features → calibration → rules R01–R17 (+ custom) → doma
                           guardrails (deterministic) → assessment + trace + cost → human decides
 ```
 
-A more detailed layered diagram is in [`docs/architecture.png`](docs/architecture.png) ([SVG](docs/architecture.svg)).
+The full diagram — including the harness, the verification boundary and the feedback loops — is [`docs/architecture.png`](docs/architecture.png) ([SVG](docs/architecture.svg)).
 
 ### 1. Derived features (`app/features.py`)
 Each feature exists because analysis showed it separates cohorts: implied weekly travel miles (visits × distance × 2), log-scale robust z of the amount, amount relative to the care-type median, binary-flag count, and linked cases (same claim number). Days since a policy change is *not* invented: the data only has a 0/1 flag.
@@ -291,8 +291,7 @@ Latest results are in [`docs/EVAL.md`](docs/EVAL.md): 10/10 behavioural invarian
 | [`docs/WRITEUP.md`](docs/WRITEUP.md) | The same content in prose, with more detail |
 | [`docs/RULES.md`](docs/RULES.md) | Data evidence for every threshold (regenerate: `python -m app.report`) |
 | [`docs/EVAL.md`](docs/EVAL.md) | Evaluation report (regenerate: `python -m app.evals.run`) |
-| [`docs/architecture_flow.png`](docs/architecture_flow.png) | One-page flow diagram (`python docs/make_architecture_sketch.py`) |
-| [`docs/architecture.png`](docs/architecture.png) / [`.svg`](docs/architecture.svg) | Detailed layered architecture (`python docs/make_architecture.py`, then `python docs/svg_to_png.py docs/architecture.svg docs/architecture.png 1.5`) |
+| [`docs/architecture.png`](docs/architecture.png) / [`.svg`](docs/architecture.svg) | System architecture, organised by trust zone. Rebuild: `python docs/make_architecture.py && python docs/svg_to_png.py docs/architecture.svg docs/architecture.png 1.5` |
 
 The slide and diagram scripts use Pillow and `python-pptx` (already in `requirements.txt`) and macOS system fonts.
 

@@ -70,7 +70,7 @@ def render(src, dst, S=2):
         else:
             dr.line([(x * S, y * S) for x, y in pts], fill=color, width=max(1, round(sw * S)), joint="curve")
         if marker:
-            arrowhead(pts[-2], pts[-1], "#3b4fd8" if "ah)" in marker and "ahg" not in marker else "#5b6478", sw)
+            arrowhead(pts[-2], pts[-1], color, sw)
 
     for el in root.iter():
         t = el.tag.replace(NS, "")
