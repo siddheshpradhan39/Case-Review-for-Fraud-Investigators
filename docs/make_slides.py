@@ -7,6 +7,7 @@ from lxml import etree
 from PIL import ImageFont
 from pptx import Presentation
 from pptx.dml.color import RGBColor as C
+from pptx.enum.dml import MSO_LINE
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
@@ -53,7 +54,7 @@ def fill_text(tf, paras, anchor=MSO_ANCHOR.TOP, margins=(0.14, 0.1, 0.14, 0.08))
             set_bullet(p)
 
 
-def box(slide, x, y, w, h, paras, fill=SOFT, line=None, shape=MSO_SHAPE.ROUNDED_RECTANGLE, anchor=MSO_ANCHOR.TOP, radius=0.05, margins=(0.14, 0.1, 0.14, 0.08)):
+def box(slide, x, y, w, h, paras, fill=SOFT, line=None, shape=MSO_SHAPE.ROUNDED_RECTANGLE, anchor=MSO_ANCHOR.TOP, radius=0.05, margins=(0.14, 0.1, 0.14, 0.08), dashed=False):
     s = slide.shapes.add_shape(shape, I(x), I(y), I(w), I(h))
     if shape == MSO_SHAPE.ROUNDED_RECTANGLE:
         s.adjustments[0] = radius
@@ -62,6 +63,8 @@ def box(slide, x, y, w, h, paras, fill=SOFT, line=None, shape=MSO_SHAPE.ROUNDED_
     if line:
         s.line.color.rgb = line
         s.line.width = Pt(1)
+        if dashed:
+            s.line.dash_style = MSO_LINE.DASH
     else:
         s.line.fill.background()
     s.shadow.inherit = False
@@ -107,119 +110,135 @@ def tile(slide, x, y, w, h, big, label, color=BRAND, bg=SOFT):
 
 
 # ------------------------------------------------------------------ slide 1
-s = slide_frame("A Junior AI Investigator that triages the queue before a human opens it",
-                "Product: who it is for, the job to be done, and what I chose to build versus leave out", 1,
-                "PRODUCT. The user is a fraud investigator (and their supervisor) who starts the day with a queue of engine-referred claims, most of which turn out benign. "
-                "The job to be done is to decide quickly and defensibly which referrals deserve human time, and on those, to get the evidence, the reasoning and the next step without hunting through dozens of signals.\n\n"
-                "The data shaped the design: three tiers (8 extreme, 9 ambiguous, 33 clean), three 'silent' cases that a flag-counting model would call clean, and one claim number reused across a clean and a critical case. "
-                "So rules handle the obvious, and AI plus humans spend their time on the ambiguous middle and on cross-case links.\n\n"
-                "DEMO PATH: open the Morning briefing, then a critical case, then C1001 (the linked-claim story).")
-box(s, 0.5, 1.45, 5.95, 1.95, [head("Who it is for, and the job to be done"),
-    bl("User: a fraud investigator, and their supervisor, who starts each day with engine-referred claims. Most turn out benign."),
-    bl("Job: decide quickly and defensibly which referrals deserve human time, and for those, get the evidence, reasoning and next step without hunting through dozens of signals."),
-    bl("The human stays in control; the AI does the first pass.")])
-box(s, 0.5, 3.53, 5.95, 2.2, [head("What the data told me (it shaped the design)"),
-    bl("50 cases fall into three tiers: 8 extreme on every signal, 9 ambiguous, 33 clean."),
-    bl("3 'silent' cases trip no flag but have five elevated signals. A flag-count model scores them clean."),
-    bl("One claim number sits on both a clean and a critical case. No per-row rule can see that."),
-    bl("So: rules for the obvious; AI and humans for the ambiguous middle and cross-case links.")])
-tile(s, 0.5, 5.86, 2.45, 1.04, "8 · 9 · 33", "case tiers in the data")
-tile(s, 3.08, 5.86, 1.7, 1.04, "17", "rules, thresholds from the data")
-tile(s, 4.91, 5.86, 1.54, 1.04, "88", "tests passing", color=GREEN, bg=GREEN_BG)
-box(s, 6.7, 1.45, 6.13, 3.5, [head("What I built"),
-    bl("Morning briefing: risk counts and exposure, top cases, rule clusters, abnormal firing", 11, 6),
-    bl("Per-case AI assessment: summary, grounded indicators, risk level, recommended action, full trace", 11, 6),
-    bl("Chatbot with tools; notes it reads (deletable everywhere) plus notes and outcomes from related cases", 11, 6),
-    bl("Bulk clear by filter or by selection, behind guardrails", 11, 6),
-    bl("Escalation to a supervisor with an AI-drafted handoff", 11, 6),
-    bl("Rules tab: create or tune rules live and backtest precision and recall", 11, 6),
-    bl("Blocklist: hard rules that auto-decline, with supervisor override", 11, 6),
-    bl("'Mark as FRAUD' feedback: lookalikes get flagged (rule R17)", 11, 6),
-    bl("Audit log of every AI action and human decision", 11, 6)])
-box(s, 6.7, 5.08, 6.13, 1.82, [head("Left out on purpose"),
-    bl("Auth, multi-tenancy, deployment: not the AI experience."),
-    bl("Training an ML model: there are no labels, so an accuracy claim would be made up."),
-    bl("Provider or member graph, external enrichment: the CSV has no IDs (the code supports them if a dataset has them)."),
-    bl("Assumptions: synthetic, unlabelled data; one row per referral; peer % is vs the same care type.", after=0)], fill=C(0xF4, 0xF5, 0xF8), line=LINE)
+def tag(slide, x, y, w, label, built=True):
+    box(slide, x, y, w, 0.24, [{"t": label, "size": 8.5, "bold": True, "color": WHITE if built else MUT, "after": 0, "align": PP_ALIGN.CENTER}],
+        fill=BRAND if built else WHITE, line=None if built else MUT, dashed=not built, anchor=MSO_ANCHOR.MIDDLE, radius=0.4, margins=(0.04, 0, 0.04, 0))
+
+
+s = slide_frame("Investigators open the tool to a triaged queue, not a blank one",
+                "Product  ·  the user, the job to be done, and what I chose to build and to cut", 1,
+                "PRODUCT. The user is a fraud investigator, and their supervisor, who starts the day with engine-referred claims that are mostly benign. "
+                "The job to be done is to decide quickly and defensibly which referrals deserve human time, and for those, to get evidence, reasoning and a next step without hunting through dozens of signals.\n\n"
+                "The data shaped the design. The 50 cases fall into three tiers: 8 extreme on every signal, 9 ambiguous, 33 clean. Three 'silent' cases (C1026, C1040, C1042) trip no flag but carry five elevated signals, "
+                "and claim number LTC-2034786 sits on a clean case (C1001) and a critical one (C1031). So rules take the obvious cases; AI and humans spend their effort on the ambiguous middle and on cross-case links.\n\n"
+                "The screenshot is the real prototype. Note '9 AI-unavailable': the free models rate-limit, and the product shows that honestly instead of inventing an assessment.\n\n"
+                "DEMO PATH: Morning briefing, then a critical case, then C1001 (the linked-claim story).")
+box(s, 0.5, 1.45, 5.45, 1.5, [head("The user and the job", 13),
+    {"runs": [("User: ", True, INK), ("a fraud investigator, and their supervisor, facing a daily queue of engine referrals that mostly turn out benign.", False, INK)], "size": 11, "after": 5},
+    {"runs": [("Job: ", True, INK), ("decide fast, and defensibly, which referrals deserve human time; on those, get evidence, reasoning and a next step without hunting through signals.", False, INK)], "size": 11, "after": 0}])
+text(s, 0.5, 3.1, 5.45, 0.25, [{"t": "WHAT THE 50-CASE CSV TOLD ME", "size": 9.5, "bold": True, "color": MUT, "after": 0}])
+tile(s, 0.5, 3.38, 1.72, 0.98, "8", "extreme on every signal", color=RED, bg=RED_BG)
+tile(s, 2.365, 3.38, 1.72, 0.98, "9", "ambiguous middle", color=AMBER, bg=AMBER_BG)
+tile(s, 4.23, 3.38, 1.72, 0.98, "33", "clean", color=GREEN, bg=GREEN_BG)
+box(s, 0.5, 4.5, 5.45, 1.32, [
+    bl("3 'silent' cases trip no flag, yet carry 5 elevated signals. A flag-count model calls them clean.", 10.5, 4),
+    bl("Claim number LTC-2034786 sits on a clean case and a critical one. No single-row rule can see that.", 10.5, 0)],
+    fill=C(0xF4, 0xF5, 0xF8), line=LINE)
+box(s, 0.5, 5.95, 5.45, 1.0, [{"runs": [("Design consequence: ", True, WHITE), ("rules take the obvious; AI and humans spend their time on the ambiguous middle and the cross-case links.", False, WHITE)], "size": 11.5, "after": 0}],
+    fill=INK, anchor=MSO_ANCHOR.MIDDLE)
+pic = s.shapes.add_picture(str(Path(__file__).resolve().parent / "screenshot_briefing.png"), I(6.2), I(1.45), width=I(6.63))
+pic.line.color.rgb, pic.line.width = LINE, Pt(1)
+text(s, 6.2, 4.78, 6.63, 0.32, [{"t": "The running prototype: Morning briefing. Cases the free models could not assess show as “AI-unavailable”; nothing is invented.", "size": 9, "color": MUT, "after": 0}])
+tag(s, 6.2, 5.12, 1.5, "BUILT IN PROTOTYPE")
+box(s, 6.2, 5.42, 3.72, 1.53, [
+    bl("Morning briefing: risk counts, exposure, clusters, abnormal firing", 10, 2),
+    bl("Per-case assessment, evidence trace, accept / reject", 10, 2),
+    bl("Chat with tools; notes the AI reads", 10, 2),
+    bl("Bulk clear, supervisor escalation, audit log", 10, 2),
+    bl("Rules tab, Blocklist, fraud-outcome feedback", 10, 0)], margins=(0.12, 0.07, 0.1, 0.05))
+box(s, 10.05, 5.42, 2.78, 1.53, [
+    {"t": "Cut on purpose", "size": 10.5, "bold": True, "color": MUT, "after": 3},
+    bl("Auth, multi-tenancy, deploy", 10, 2),
+    bl("ML training: no labels", 10, 2),
+    bl("Provider / member graph: no IDs in the CSV", 10, 0)], fill=WHITE, line=MUT, dashed=True, margins=(0.12, 0.07, 0.1, 0.05))
 
 # ------------------------------------------------------------------ slide 2
-s = slide_frame("Rules first; agents reason only as deep as each case needs",
-                "Architecture: how the system reasons, stays grounded, and scales", 2,
-                "ARCHITECTURE. Not a single LLM call. Deterministic rules score every case first (thresholds come from natural breaks in the data, not guesses). "
-                "A router with no LLM then sends each case down one of three lanes: 29 clean cases share one cheap batched call, 8 critical cases get a verifier only, and 13 ambiguous cases get the full crew.\n\n"
-                "On the DEEP lane, specialists run in parallel only where their domain fired; an adversarial challenger argues the benign case; a verifier synthesises; a three-persona panel convenes only if the case is contested. "
-                "Every output then goes through deterministic guardrails.\n\n"
-                "GROUNDING: the model can only move the score by 20 points, the level is derived, every citation is re-checked against the record, and failures are shown as 'LLM unavailable', never invented.\n\n"
-                "MEASURED: 10/10 invariants, 5/5 counterfactual and prompt-injection tests; versus the single-judge baseline, 100% band agreement and 27% fewer tokens. "
-                "The strong-tier verifier makes reference dollars higher (0.44 vs 0.12), so I do not claim it is cheaper in dollars.\n\n"
-                "DEMO PATH: Investigation trace on C1001 (reused specialist, challenger, panel, and the linked-case floor overruling a -10 vote).")
+s = slide_frame("Rules set the depth; a tool-using agent crew reasons only where it pays",
+                "Architecture  ·  how a case is reasoned about, kept grounded, and scaled", 2,
+                "ARCHITECTURE. Not one LLM call. Deterministic rules score every case first; thresholds come from natural breaks in the data. "
+                "A router with no LLM then picks a lane: 29 clean cases share one cheap batched call (5 per call), 8 critical cases get a verifier only, and 13 ambiguous or linked cases get the full crew.\n\n"
+                "On the DEEP lane, specialists (billing, collusion and linkage, geography and utilization) run in parallel only where their domain fired, each with at most one tool. An adversarial challenger argues the benign case, "
+                "a verifier on the strong model tier synthesises, and a three-persona panel convenes only when the case is contested. All of it runs in a small harness I wrote: budgets, tool allowlists, typed output with repair, fast-to-strong escalation, model fallback, traced spans. No agent framework, no RAG, no vector store.\n\n"
+                "GROUNDING is deterministic code around the model: citations re-checked against the record, score moves capped at 20 with the level derived, no CLEAR on HIGH/CRITICAL or a confirmed-fraud lookalike, failures shown as LLM_UNAVAILABLE.\n\n"
+                "MEASURED on the 50 cases (docs/EVAL.md): 10/10 invariants, 5/5 counterfactual and injection tests, 277/277 stored indicators re-verify, 100% band agreement with the single-judge baseline at 27% fewer tokens. "
+                "The strong-tier verifier raises reference dollars ($0.44 vs $0.12), so I do not claim it is cheaper in dollars.\n\n"
+                "SCALING: right side is explicitly not built.")
+text(s, 7.6, 0.93, 5.23, 0.3, [{"runs": [("Solid = built in the prototype    ", True, BRAND), ("Dashed = production path, not built", True, MUT)], "size": 10, "after": 0, "align": PP_ALIGN.RIGHT}])
 y0 = 1.42
-box(s, 0.5, y0, 2.15, 0.78, [{"t": "CSV + derived features", "size": 10.5, "bold": True, "after": 1, "align": PP_ALIGN.CENTER}, {"t": "travel miles, log-z, links", "size": 9, "color": MUT, "after": 0, "align": PP_ALIGN.CENTER}], anchor=MSO_ANCHOR.MIDDLE)
-arrow(s, 2.7, y0 + 0.26)
-box(s, 3.05, y0, 2.85, 0.78, [{"t": "17 rules (R01–R17)", "size": 10.5, "bold": True, "after": 1, "align": PP_ALIGN.CENTER}, {"t": "thresholds from natural breaks in the data", "size": 9, "color": MUT, "after": 0, "align": PP_ALIGN.CENTER}], anchor=MSO_ANCHOR.MIDDLE)
-arrow(s, 5.95, y0 + 0.26)
-box(s, 6.3, y0, 2.75, 0.78, [{"t": "Score 0–100", "size": 10.5, "bold": True, "after": 1, "align": PP_ALIGN.CENTER}, {"t": "strongest rule per domain, noisy-OR", "size": 9, "color": MUT, "after": 0, "align": PP_ALIGN.CENTER}], anchor=MSO_ANCHOR.MIDDLE)
-arrow(s, 9.1, y0 + 0.26)
-box(s, 9.45, y0, 3.38, 0.78, [{"t": "Router: deterministic, no LLM", "size": 10.5, "bold": True, "color": WHITE, "after": 1, "align": PP_ALIGN.CENTER}, {"t": "picks depth from the fired rules", "size": 9, "color": WHITE, "after": 0, "align": PP_ALIGN.CENTER}], fill=BRAND, anchor=MSO_ANCHOR.MIDDLE)
-ly = 2.34
-box(s, 0.5, ly, 2.6, 1.25, [{"t": "FAST  ·  29 cases", "size": 12, "bold": True, "color": GREEN, "after": 3}, {"t": "No rule fired. One cheap call reviews 5 cases at once. No tools.", "size": 11, "after": 0}], fill=GREEN_BG)
-box(s, 3.25, ly, 2.6, 1.25, [{"t": "OBVIOUS  ·  8 cases", "size": 12, "bold": True, "color": RED, "after": 3}, {"t": "Rule level CRITICAL. Verifier only, since the facts are unambiguous.", "size": 11, "after": 0}], fill=RED_BG)
-box(s, 6.0, ly, 6.83, 1.25, [{"t": "DEEP  ·  13 cases (ambiguous or linked)", "size": 12, "bold": True, "color": AMBER, "after": 3},
-    {"t": "Specialists run in parallel, only where their domain fired: billing, collusion and linkage, geography and utilization.  →  Adversarial challenger argues the benign case.  →  Verifier synthesises.  →  3-persona judge panel only if the case is contested.", "size": 11, "after": 0}], fill=AMBER_BG)
-box(s, 0.5, 3.72, 12.33, 0.42, [{"runs": [("Grounding gate ", True, WHITE), ("on every output  →  assessment + investigation trace + cost.   Chat and agents share 9 read-only tools (peer stats, similar and linked cases, notes, search).", False, WHITE)], "size": 10, "after": 0}], fill=INK, anchor=MSO_ANCHOR.MIDDLE, radius=0.12)
-cy, ch, cw = 4.3, 2.65, 4.03
-box(s, 0.5, cy, cw, ch, [head("Grounded, not just prompted", 13),
-    bl("Rules are deterministic. The model moves the score by at most ±20; the level is derived from the score.", 11, 5),
-    bl("Every cited field=value is re-checked against the record (286 of 286 stored indicators pass). Invented figures are flagged.", 11, 5),
-    bl("It cannot recommend clearing a HIGH/CRITICAL case or a lookalike of a confirmed fraud, or downgrade a case linked to a CRITICAL one.", 11, 5),
-    bl("Notes are untrusted input. Failures show as 'LLM unavailable', never invented text.", 11, after=0)])
-box(s, 0.5 + cw + 0.12, cy, cw, ch, [head("Harness and measurements", 13),
-    bl("Every agent has budgets, a tool allowlist, typed output with repair, fast→strong escalation, model fallback and traced calls.", 11, 5),
-    bl("10/10 behavioural invariants; 5/5 counterfactual and prompt-injection tests.", 11, 5),
-    bl("Versus a single-judge baseline: 100% band agreement, 27% fewer tokens (238k vs 328k). A new note re-runs 2 calls, not 5.", 11, after=0)])
-box(s, 0.5 + 2 * (cw + 0.12), cy, cw, ch, [head("Beyond 50 cases", 13),
-    bl("Router cost is O(1) per case, so effort lands on the hard tail; real queues have a larger FAST share.", 11, 5),
-    bl("Batching, parallel subagents, reuse by evidence hash, model tiers and budgets keep cost bounded.", 11, 5),
-    bl("Prototype limits: SQLite, in-process workers, O(n) similarity. Next: Postgres, queue workers, a vector index.", 11, 5),
-    bl("About 4 sequential LLM hops (≈65 s on free models): fine for a morning batch, not per click.", 11, after=0)])
+def pipe(x, w, big, small, fill=SOFT, fg=INK, mut=MUT):
+    box(s, x, y0, w, 0.8, [{"t": big, "size": 11, "bold": True, "color": fg, "after": 1, "align": PP_ALIGN.CENTER},
+                           {"t": small, "size": 9, "color": mut, "after": 0, "align": PP_ALIGN.CENTER}], fill=fill, anchor=MSO_ANCHOR.MIDDLE)
+pipe(0.5, 2.5, "50-case CSV", "features: log-z, travel, claim links")
+arrow(s, 3.06, y0 + 0.27)
+pipe(3.4, 3.0, "17 rules, R01–R17", "thresholds = natural breaks in the data")
+arrow(s, 6.46, y0 + 0.27)
+pipe(6.8, 2.9, "Score 0–100 + level", "top rule per domain, noisy-OR")
+arrow(s, 9.76, y0 + 0.27)
+pipe(10.1, 2.73, "Router, no LLM", "picks depth from the rules", fill=BRAND, fg=WHITE, mut=WHITE)
+ly = 2.38
+box(s, 0.5, ly, 2.75, 1.42, [{"t": "FAST  ·  29 cases", "size": 12, "bold": True, "color": GREEN, "after": 3}, {"t": "No rule fired, no link. One cheap call reviews 5 cases at once.", "size": 10.5, "after": 0}], fill=GREEN_BG)
+box(s, 3.37, ly, 2.75, 1.42, [{"t": "OBVIOUS  ·  8 cases", "size": 12, "bold": True, "color": RED, "after": 3}, {"t": "Rule level CRITICAL. Verifier only: the facts are unambiguous, so no debate is bought.", "size": 10.5, "after": 0}], fill=RED_BG)
+box(s, 6.24, ly, 6.59, 1.42, [{"t": "DEEP  ·  13 cases (ambiguous or linked)", "size": 12, "bold": True, "color": AMBER, "after": 3},
+    {"t": "Specialists in parallel, only where their domain fired (billing · collusion + linkage · geo/utilization, ≤1 tool each)  →  adversarial challenger  →  verifier (strong tier)  →  3-persona panel only if contested.", "size": 10.5, "after": 0}], fill=AMBER_BG)
+box(s, 0.5, 3.93, 12.33, 0.56, [{"runs": [("VERIFICATION BOUNDARY, deterministic code and not the model:  ", True, WHITE),
+    ("citations re-checked against the record  ·  score moves ≤ 20, level derived  ·  no CLEAR on HIGH/CRITICAL or fraud lookalike  ·  failure = “LLM unavailable”", False, WHITE)], "size": 10, "after": 0}],
+    fill=INK, anchor=MSO_ANCHOR.MIDDLE, radius=0.12)
+ry, rh = 4.68, 2.27
+text(s, 0.5, ry, 7.3, 0.22, [{"t": "MEASURED ON THE 50 CASES  (docs/EVAL.md)", "size": 9.5, "bold": True, "color": MUT, "after": 0}])
+tw = 1.7
+for i, (big, lab, col, bg) in enumerate([("10 / 10", "behavioural invariants", GREEN, GREEN_BG), ("5 / 5", "counterfactual tests", GREEN, GREEN_BG),
+                                          ("277 / 277", "indicators re-verified", GREEN, GREEN_BG), ("−27%", "tokens vs single judge", BRAND, SOFT)]):
+    tile(s, 0.5 + i * (tw + 0.1), ry + 0.28, tw, 0.86, big, lab, color=col, bg=bg)
+box(s, 0.5, ry + 1.26, 7.3, 1.01, [
+    bl("Same 100% band agreement as the single-judge baseline; a new note re-runs 2 calls, not 5 (specialists reused by evidence hash).", 10, 3),
+    bl("Honest cost: $0.44 vs $0.12 reference, because the verifier uses the strong tier. Weak spot found: the challenger rates every case “medium”.", 10, 0)],
+    fill=C(0xF4, 0xF5, 0xF8), line=LINE, margins=(0.12, 0.07, 0.1, 0.05))
+tag(s, 8.0, ry, 2.2, "PRODUCTION PATH: NOT BUILT", built=False)
+box(s, 8.0, ry + 0.3, 4.83, 1.97, [
+    {"runs": [("Prototype limits: ", True, INK), ("SQLite, in-process workers, O(n) similarity, ~4 sequential hops (≈65 s on free models): right for a morning batch, not per click.", False, INK)], "size": 10, "after": 4},
+    {"runs": [("Beyond 50 cases: ", True, INK), ("Postgres + queue workers; vector index for similarity; per-tenant budgets; streaming UI. Router stays O(1) per case, so spend lands on the hard tail (a real queue has a bigger FAST share).", False, INK)], "size": 10, "after": 0}],
+    fill=WHITE, line=MUT, dashed=True, margins=(0.14, 0.09, 0.12, 0.06))
 
 # ------------------------------------------------------------------ slide 3
-s = slide_frame("The AI advises, humans decide, and the risks are named",
-                "Human in the loop, trade-offs, and what I would do next", 3,
-                "HUMAN IN THE LOOP. The AI never changes a case's status: every clear, escalation, override and outcome is a human action with a reason, in an audit log. "
-                "Investigators can see the rule score next to the AI score, check every indicator against its field and value, accept or reject it (rejections are respected next time), and read the agent trace and the guardrail removals.\n\n"
-                "Notes are the investigator's steering wheel: a note changes the next assessment, and deleting a note removes it from the AI's knowledge, the chat context, related-case context and audit text.\n\n"
-                "TRADE-OFFS. No labels means no accuracy claim; backtests use synthetic labels and say so. False negatives are the costliest risk and only discovered misses can be measured, "
-                "so the next step is a safety net: miss-rate tracking, look-back that reopens cleared lookalikes, an independent adversarial reviewer and audited sampling. "
-                "I prototyped an anomaly detector and deliberately deferred it because it was unstable at 50 cases.\n\n"
-                "DEMO PATH: add a note, watch the assessment go stale, ask the chatbot about it, delete it; then a Blocklist decline and supervisor override; then the Rules tab backtest.")
-cw3, cy3, ch3 = 4.03, 1.42, 5.53
-box(s, 0.5, cy3, cw3, ch3, [head("How investigators trust, check and override it", 14),
-    bl("Rule score and AI score are shown side by side.", 11.5, 7),
-    bl("Every indicator cites a field and value. Accept ✓ or reject ✗; rejected findings are not re-asserted.", 11.5, 7),
-    bl("Guardrail removals and the full agent trace are visible.", 11.5, 7),
-    bl("A note changes the next assessment. Deleting it removes it from the AI, the chat and the audit text.", 11.5, 7),
-    bl("Every clear, escalation and override needs a reason and is audited. The AI never changes a status.", 11.5, 7),
-    bl("Bulk clear previews what is blocked, and why.", 11.5, 7),
-    bl("Supervisors approve or return escalations, override blocklist declines and activate hard rules; investigators can only propose.", 11.5, 7),
-    bl("Rules tab: draft, backtest with impact preview, then save or run in shadow.", 11.5, 7),
-    bl("'Mark as FRAUD' teaches the system: lookalikes are flagged and clearing them is blocked.", 11.5, after=0)])
-box(s, 0.5 + cw3 + 0.12, cy3, cw3, ch3, [head("Trade-offs and risks", 14),
-    bl("Accuracy: no labels. Backtests use synthetic labels (leave-one-out, so a rule does not grade itself): they show agreement, not fraud.", 11.5, 7),
-    bl("Cost: the crew uses fewer tokens but more reference dollars ($0.44 vs $0.12) because of the strong-tier verifier.", 11.5, 7),
-    bl("Latency: about 20 s per call on free models.", 11.5, 7),
-    bl("Trust: the prose can still be subtly wrong even when every cited field is right.", 11.5, 7),
-    bl("Abuse: injection notes, bulk clear, over-broad blocklist entries (confirmation needed above 25% of the queue).", 11.5, 7),
-    bl("Fairness: distance and weekend signals can proxy for rural or shift-work providers.", 11.5, 7),
-    bl("False negatives are the costliest risk, and only discovered misses can be measured.", 11.5, 7),
-    bl("My own evals found: the challenger rates every case 'medium', and confidence barely separates contested cases.", 11.5, after=0)], fill=C(0xF4, 0xF5, 0xF8), line=LINE)
-box(s, 0.5 + 2 * (cw3 + 0.12), cy3, cw3, ch3, [head("With more time, in priority order", 14),
-    bl("False-negative safety net: miss-rate tracking from confirmed outcomes; a look-back that reopens cleared lookalikes; an independent adversarial reviewer; audited sampling with a statistical bound.", 11.5, 7),
-    bl("Anomaly detector: prototyped, deferred because it is unstable at 50 cases.", 11.5, 7),
-    bl("Re-fit weights and thresholds from confirmed outcomes.", 11.5, 7),
-    bl("A provider and member graph; a labelled backtest.", 11.5, 7),
-    bl("Four-eyes on large bulk clears; a streaming UI.", 11.5, 7),
-    {"t": "Deliberately cut: auth, deployment, enrichment, model training.", "size": 11.5, "color": MUT, "after": 0}], fill=BRAND_BG if False else C(0xEC, 0xF7, 0xF1))
+s = slide_frame("The AI advises, humans decide, and the known risks are named",
+                "Human in the loop  ·  trade-offs  ·  what I would do with more time", 3,
+                "HUMAN IN THE LOOP. The AI never changes a case's status. Every clear, escalation, override and fraud outcome is a human action with a reason, in an audit log. "
+                "Investigators see the rule score beside the AI score, check every indicator against its field and value, accept or reject it (rejections are respected next time), and read the agent trace and guardrail removals. "
+                "Notes steer the next assessment, and deleting a note purges it from assessments, chat and related-case context. Supervisors approve escalations, override blocklist declines and activate hard rules; investigators can only propose them.\n\n"
+                "TRADE-OFFS. No labels means no accuracy claim; backtests use synthetic labels and say so. False negatives are the costliest risk and only discovered misses can be measured. "
+                "The free models rate-limit, so some cases show LLM unavailable: shown, not faked.\n\n"
+                "NEXT (not built): false-negative safety net (miss-rate tracking, look-back that reopens cleared lookalikes, independent adversarial reviewer, audit sampling with a statistical bound). "
+                "I prototyped an anomaly detector and deferred it: flagged sets changed with the seed at 50 cases.\n\n"
+                "DEMO PATH: add a note, watch it go stale, ask the chatbot, delete it; Blocklist decline and override; Rules tab backtest.")
+cy, ch = 1.42, 5.53
+tag(s, 0.5, cy, 1.5, "BUILT IN PROTOTYPE")
+box(s, 0.5, cy + 0.3, 4.1, ch - 0.3, [head("How an investigator trusts, checks and overrides", 12.5),
+    {"runs": [("AI can: ", True, BRAND), ("rank and explain, recommend an action, draft an escalation, answer questions using tools.", False, INK)], "size": 10.5, "after": 5},
+    {"runs": [("Only a human can: ", True, RED), ("clear, escalate, mark fraud, delete a note. Supervisors alone: override a decline, activate a hard rule.", False, INK)], "size": 10.5, "after": 7},
+    bl("Rule score and AI score side by side", 10.5, 4),
+    bl("Every indicator cites field = value; accept ✓ or reject ✗, and a rejected finding is not re-asserted", 10.5, 4),
+    bl("Full agent trace and guardrail removals visible", 10.5, 4),
+    bl("A note changes the next assessment; deleting it purges it everywhere", 10.5, 4),
+    bl("Every action needs a reason and lands in the audit log", 10.5, 4),
+    bl("Bulk clear previews what is blocked, and why", 10.5, 4),
+    bl("“Mark as FRAUD” teaches the system: lookalikes get flagged (R17)", 10.5, 0)])
+tag(s, 4.75, cy, 1.5, "BUILT IN PROTOTYPE")
+box(s, 4.75, cy + 0.3, 4.1, ch - 0.3, [head("Trade-offs and risks I see", 12.5),
+    {"runs": [("Accuracy. ", True, INK), ("No labels, so no accuracy claim. Backtests use synthetic labels (leave-one-out) and measure agreement, not fraud.", False, INK)], "size": 10.5, "after": 5},
+    {"runs": [("False negatives. ", True, RED), ("The costliest risk; only discovered misses can be measured. Guardrails stop the AI clearing anything risky, but do not find what the rules missed.", False, INK)], "size": 10.5, "after": 5},
+    {"runs": [("Cost and latency. ", True, INK), ("Fewer tokens, more reference dollars ($0.44 vs $0.12). About 20 s per call; free models rate-limit, so some cases show “LLM unavailable”.", False, INK)], "size": 10.5, "after": 5},
+    {"runs": [("Trust. ", True, INK), ("Cited fields are verified; the prose is not. It can still be subtly wrong.", False, INK)], "size": 10.5, "after": 5},
+    {"runs": [("Abuse. ", True, INK), ("Notes are untrusted (injection tests pass); bulk clear is guarded; blocklist entries covering over 25% of the queue need confirmation.", False, INK)], "size": 10.5, "after": 5},
+    {"runs": [("Fairness. ", True, INK), ("Distance and weekend signals can proxy for rural or shift-work providers.", False, INK)], "size": 10.5, "after": 0}],
+    fill=C(0xF4, 0xF5, 0xF8), line=LINE)
+tag(s, 9.0, cy, 2.2, "PRODUCTION PATH: NOT BUILT", built=False)
+box(s, 9.0, cy + 0.3, 3.83, ch - 0.3, [head("With more time, in priority order", 12.5),
+    {"runs": [("1  False-negative safety net. ", True, INK), ("Miss-rate tracking from confirmed outcomes; a look-back that reopens cleared lookalikes; an independent adversarial reviewer; audit sampling with a statistical bound.", False, INK)], "size": 10.5, "after": 6},
+    {"runs": [("2  Learn from outcomes. ", True, INK), ("Re-fit weights and thresholds from confirmed fraud.", False, INK)], "size": 10.5, "after": 6},
+    {"runs": [("3  Provider / member graph ", True, INK), ("and a labelled backtest, once real IDs and labels exist.", False, INK)], "size": 10.5, "after": 6},
+    {"runs": [("4  Four-eyes ", True, INK), ("on large bulk clears; streaming UI.", False, INK)], "size": 10.5, "after": 10},
+    {"t": "Prototyped, then deferred: a statistical anomaly detector. On 50 cases its flagged set changed with the random seed, so I would not ship it.", "size": 10, "color": MUT, "after": 0}],
+    fill=WHITE, line=MUT, dashed=True)
 
 prs.save(OUT)
 
