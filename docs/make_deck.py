@@ -105,17 +105,6 @@ def text(slide, x, y, w, h, paras, anchor=MSO_ANCHOR.TOP):
     return b
 
 
-def chip(slide, x, y, w, t, bg=BLUE_BG, fg=BLUE, h=0.28, size=9.5, dashed=False, edge=None):
-    return card(slide, x, y, w, h, [{"t": t, "size": size, "bold": True, "color": fg, "after": 0,
-                                     "align": PP_ALIGN.CENTER}],
-                bg=bg, edge=edge, dashed=dashed, anchor=MSO_ANCHOR.MIDDLE, pad=(0.05, 0, 0.05, 0), radius=0.5)
-
-
-def stat(slide, x, y, w, h, big, cap, color=INK, bg=WASH, bigsize=30):
-    return card(slide, x, y, w, h,
-                [{"t": big, "size": bigsize, "bold": True, "color": color, "after": 2, "align": PP_ALIGN.CENTER},
-                 {"t": cap, "size": 9.5, "color": MUTE, "after": 0, "align": PP_ALIGN.CENTER, "lead": 0.95}],
-                bg=bg, anchor=MSO_ANCHOR.MIDDLE, pad=(0.08, 0.06, 0.08, 0.06))
 
 
 def banner(slide, x, y, w, h, runs, bg=INK, size=11.5):
@@ -148,56 +137,66 @@ def bl(t, size=11, after=5, runs=None):
 
 
 # ================================================================== slide 1
-s = frame("Investigators should open to a queue that is already triaged",
-          "The user · the job to be done · what I built and what I left out", 1,
+s = frame("A junior investigator that works the queue before a human opens it",
+          "The user · the job to be done · what I built, what I left out, and why", 1,
           "THE USER is a fraud investigator and their supervisor. Every morning an engine hands them a queue of referrals, "
           "and most of those turn out benign. Today they paste a claim number into a legacy tool and read nine signals a case, "
-          "one case at a time. The cost is not the fraud they find, it is the hours spent on the cases that were never fraud.\n\n"
+          "one case at a time. The cost is not the fraud they find, it is the hours spent on cases that were never fraud.\n\n"
           "THE JOB TO BE DONE: decide quickly, and defensibly, which referrals deserve human time; and on the ones that do, "
           "get the evidence, the reasoning and a recommended next step without assembling it by hand.\n\n"
-          "THE DATA SHAPED THE BUILD. The 50-case sample splits three ways: 8 cases extreme on every signal, 9 genuinely "
-          "ambiguous, 33 clean. That split is the whole product thesis: deterministic rules are enough for the 8 and the 33, "
-          "so the expensive reasoning belongs to the 9. Two patterns no row-by-row engine can see: three cases trip no flag at "
-          "all yet carry five elevated signals, and one claim number (LTC-2034786) sits on both a clean case and a critical one.\n\n"
-          "WHAT I CUT AND WHY: auth, multi-tenancy and deployment are explicitly out of scope in the brief. I did not train a "
-          "model because the data has no fraud labels, so any accuracy number would be invented. A provider/member graph needs "
-          "IDs the CSV does not contain; the code supports them the day a dataset does.")
+          "THE SYSTEM IN ONE BREATH: it ingests the referral queue, scores every case with rules calibrated from the data, "
+          "has an agent crew reason over the cases that are genuinely unclear, and hands the investigator a ranked queue where "
+          "each case carries a summary, cited evidence, a risk level and a recommended action — with every AI step and every "
+          "human decision recorded. Slide 2 opens up how that reasoning works.\n\n"
+          "WHAT I BUILT is a narrow surface finished properly rather than a wide one half-done: the briefing an investigator "
+          "lands on, the case view they work in, the bulk actions that clear the benign majority safely, and the two governance "
+          "surfaces — Rules and Blocklist — that let the team change the system's behaviour without an engineer.\n\n"
+          "WHAT I CUT AND WHY: auth, multi-tenancy and deployment are explicitly out of scope in the brief, so investigator and "
+          "supervisor are personas you switch between. I did not train a model because the data carries no fraud labels, so any "
+          "accuracy number would be invented. A provider/member graph needs IDs the CSV does not contain — the linkage code is "
+          "written and works on claim number today. External enrichment was interesting but not the core of the AI experience.")
 
-card(s, MARGIN, 1.5, 6.05, 1.42,
+card(s, MARGIN, 1.5, 6.05, 1.34,
      [{"t": "The user", "size": 10, "bold": True, "color": BLUE, "after": 6},
       {"t": "A fraud investigator and their supervisor, facing a daily queue of engine referrals that mostly turn out benign.",
-       "size": 12.5, "after": 0, "lead": 1.15}],
+       "size": 12, "after": 0, "lead": 1.15}],
      bg=BLUE_BG)
-card(s, MARGIN + 6.17, 1.5, 6.06, 1.42,
+card(s, MARGIN + 6.17, 1.5, 6.06, 1.34,
      [{"t": "The job to be done", "size": 10, "bold": True, "color": BLUE, "after": 6},
       {"t": "Decide fast, and defensibly, which referrals deserve human time — and on those, get the evidence and the next step without assembling it by hand.",
-       "size": 12.5, "after": 0, "lead": 1.15}],
+       "size": 12, "after": 0, "lead": 1.15}],
      bg=BLUE_BG)
 
-label(s, MARGIN, 3.14, 6.0, "What the 50-case sample showed")
-stat(s, MARGIN, 3.42, 3.97, 1.08, "8", "extreme on every signal", color=RED, bg=RED_BG)
-stat(s, MARGIN + 4.09, 3.42, 3.97, 1.08, "9", "genuinely ambiguous", color=RUST, bg=RUST_BG)
-stat(s, MARGIN + 8.18, 3.42, 4.05, 1.08, "33", "clean", color=GREEN, bg=GREEN_BG)
-banner(s, MARGIN, 4.64, 12.23, 0.62,
-       [("So: rules take the obvious 41. Agents and humans spend their time on the 9 — plus the links no single row reveals: ",
-         True, WHITE),
-        ("3 cases trip no flag yet carry five elevated signals, and one claim number sits on a clean case and a critical one.",
+banner(s, MARGIN, 2.96, 12.23, 0.66,
+       [("The system in one line.  ", True, WHITE),
+        ("It scores every referral with rules calibrated from the data, reasons over the cases that are genuinely unclear, and hands the investigator a ranked queue — each case with a summary, cited evidence, a risk level and a recommended action.",
          False, C(0xCB, 0xD5, 0xE1))], size=11)
 
-label(s, MARGIN, 5.5, 6.0, "Built in the prototype", color=BLUE)
-built = ["Morning briefing", "Per-case assessment", "Evidence + agent trace", "Accept / reject / note",
-         "Bulk clear, guarded", "Supervisor escalation", "Rules + backtest", "Blocklist",
-         "Outcome feedback", "Audit log"]
-for i, t in enumerate(built):
-    chip(s, MARGIN + (i % 5) * 1.63, 5.78 + (i // 5) * 0.37, 1.53, t, size=8.5)
+label(s, MARGIN, 3.78, 6.0, "What I built", color=BLUE)
+built = [("Morning briefing", "Risk counts, exposure, rule clusters, abnormal firing"),
+         ("Per-case assessment", "Summary, cited indicators, risk level, recommended action"),
+         ("Full agent trace", "Every step, tool call and cost, open for inspection"),
+         ("Ask, accept, reject", "Chat over the case; a finding you reject is not re-asserted"),
+         ("Notes that steer the AI", "They change the next assessment, and purge everywhere on delete"),
+         ("Bulk clear, guarded", "By filter or selection, previewing what it may not touch"),
+         ("Supervisor escalation", "AI-drafted handoff; the supervisor approves or returns it"),
+         ("Rules and Blocklist", "Tune rules against a live backtest; hard rules that decline"),
+         ("Outcome feedback + audit", "Confirmed fraud flags lookalikes; every action is logged")]
+gw, gh, gx, gy = 2.62, 0.86, 0.17, 0.12
+for i, (t, d) in enumerate(built):
+    card(s, MARGIN + (i % 3) * (gw + gx), 4.06 + (i // 3) * (gh + gy), gw, gh,
+         [{"t": t, "size": 10.5, "bold": True, "color": INK, "after": 3},
+          {"t": d, "size": 9, "color": MUTE, "after": 0, "lead": 1.12}],
+         bg=WASH, pad=(0.14, 0.11, 0.12, 0.08))
 
-label(s, 8.85, 5.5, 3.93, "Left out on purpose", color=MUTE)
-for i, (t, why) in enumerate([("Auth, multi-tenancy, deploy", "out of scope in the brief"),
-                              ("A trained ML model", "no labels — accuracy would be invented"),
-                              ("Provider / member graph", "no IDs in the CSV; code is ready")]):
-    card(s, 8.85, 5.78 + i * 0.39, 3.93, 0.34,
-         [{"runs": [(t + "  ", True, MUTE), (why, False, FAINT)], "size": 9, "after": 0}],
-         bg=WHITE, edge=RULE, anchor=MSO_ANCHOR.MIDDLE, pad=(0.12, 0, 0.1, 0), radius=0.12)
+label(s, 9.0, 3.78, 3.78, "What I left out, and why", color=MUTE)
+for i, (t, why) in enumerate([("Auth and multi-tenancy", "out of scope in the brief — investigator and supervisor are personas you switch between"),
+                              ("A trained ML model", "the data carries no fraud labels, so any accuracy figure would be fiction"),
+                              ("Provider / member graph", "the CSV has no such IDs; the linkage code is written and runs on claim number today"),
+                              ("External enrichment", "public registries and search would be interesting, but are not the core AI experience")]):
+    card(s, 9.0, 4.06 + i * 0.72, 3.78, 0.68,
+         [{"runs": [(t + " — ", True, INK), (why, False, MUTE)], "size": 9.5, "after": 0, "lead": 1.14}],
+         bg=WHITE, edge=RULE, anchor=MSO_ANCHOR.MIDDLE, pad=(0.14, 0, 0.12, 0))
 
 # ================================================================== slide 2
 s = frame("Rules set the depth; agents reason only where it pays",
@@ -281,7 +280,7 @@ s = frame("What I cut, what I would do next, and the risks I can name",
           "reference dollars ($0.44 vs $0.12 across 50 cases) because the verifier runs on the strong tier — I would rather state "
           "that plainly than claim the architecture is cheaper on every axis. At roughly 20 seconds a call on free models, this is "
           "a morning batch job, not a per-click interaction, and the UI is built around that.\n\n"
-          "ABUSE AND FAIRNESS. Notes are untrusted input and injection tests pass. Bulk clear previews what it cannot touch. A "
+          "ABUSE AND FAIRNESS. Bulk clear previews what it cannot touch. A "
           "blocklist entry covering more than a quarter of the queue demands explicit confirmation. On fairness, distance and "
           "weekend-billing signals can proxy for rural or shift-work providers — worth auditing before any real deployment.\n\n"
           "MY OWN EVALS FOUND WEAKNESSES: the challenger rates nearly every case 'medium' plausibility, and confidence barely "
@@ -295,7 +294,7 @@ risks = [("Accuracy", "No labels in the data — so no accuracy claim. Backtests
          ("Cost", "27% fewer tokens than one judge, but 3.6× the reference dollars — the verifier runs strong-tier.", RUST),
          ("Latency", "~20s a call on free models. A morning batch, not a per-click interaction.", RUST),
          ("Trust", "Cited fields are verified; the prose around them is not. It can still read wrong.", RUST),
-         ("Abuse", "Notes are untrusted input; bulk clear and broad blocklist entries are gated.", MUTE),
+         ("Abuse", "Bulk clear and over-broad blocklist entries are gated and previewed.", MUTE),
          ("Fairness", "Distance and weekend signals can proxy for rural or shift-work providers.", MUTE)]
 for i, (k, v, col) in enumerate(risks):
     card(s, MARGIN, 1.74 + i * 0.72, 6.05, 0.64,
@@ -342,8 +341,8 @@ s = frame("The AI advises. Only a human decides.",
           "and why, and what each step cost. Fourth, every action carries a reason into the audit log.\n\n"
           "NOTES ARE THE STEERING WHEEL. An investigator's note changes the next assessment — the case is marked stale the moment "
           "its inputs change — and the chatbot can quote it. Deleting a note purges it everywhere: assessments, chat history, "
-          "related-case context. Notes are also treated as untrusted text, so an instruction hidden inside one is not obeyed; "
-          "that is covered by passing injection tests.\n\n"
+          "related-case context. A note is trusted expert evidence and is weighed like any other signal, inside the same "
+          "guardrails; knowledge that should apply to every case is promoted to a rule in the Rules tab or the Blocklist.\n\n"
           "AUTHORITY IS SPLIT. Investigators propose blocklist entries; supervisors enact them. Only a supervisor can override an "
           "auto-decline, and only with a written reason that becomes a case note and counts against the entry that fired it as a "
           "false-positive signal. Escalations carry an AI-drafted handoff, and the supervisor approves or returns them.\n\n"
@@ -382,7 +381,7 @@ label(s, MARGIN, 4.7, 6.0, "Notes are the steering wheel")
 card(s, MARGIN, 4.98, 6.05, 1.9,
      [bl("A note changes the next assessment — the case is marked stale at once", 11, 7),
       bl("Delete it and it is purged everywhere: assessment, chat, related cases", 11, 7),
-      bl("Notes are untrusted text: a hidden instruction is not obeyed (tested)", 11, 7),
+      bl("Expert input is trusted as evidence — inside the same guardrails as every signal", 11, 7),
       bl("Investigators propose blocklist entries; supervisors enact them", 11, 0)],
      bg=WASH)
 

@@ -37,7 +37,7 @@
 | **Rules engine** | 17 numbered rules (R01–R17) with LOW / MEDIUM / HIGH / CRITICAL levels. Thresholds are **computed from the data** (natural breaks), not guessed. Score = strongest rule per fraud domain combined by noisy-OR. |
 | **Agent crew** | A deterministic router sends each case to a lane; only hard cases get the full crew (specialists, challenger, verifier, judge panel). Every agent runs in a bounded, traced harness. |
 | **Guardrails** | The model proposes, deterministic code disposes: score moves at most ±20, the level is derived, every citation is re-verified against the record, and risky "clear" recommendations are refused. |
-| **Notes the AI reads** | Manual notes feed the assessment and the chatbot, are treated as untrusted input, and can be **deleted everywhere** (assessments, chat, related-case context and audit text are purged). |
+| **Notes the AI reads** | Manual notes are trusted expert evidence: they feed the assessment and the chatbot, are weighed inside the same guardrails as every other signal, and can be **deleted everywhere** (assessments, chat, related-case context and audit text are purged). |
 | **Cross-case knowledge** | Agents see notes, decisions and confirmed outcomes from *related* cases (same claim number + nearest by signal profile) and can search every note. |
 | **Chatbot** | Per-case and queue-level chat over 9 read-only tools; sees the case, the assessment, all notes and the audit tail. |
 | **Bulk clear** | By filter (e.g. `score < 10`) **or by the rows you tick**, behind a guardrailed preview that lists what is blocked and why. |
