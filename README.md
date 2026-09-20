@@ -51,32 +51,132 @@
 
 ## Quick start
 
-**Requirements:** Python 3.10 or newer (developed on 3.14). No Node, no build step, no database server.
+Everything below was run end to end on a clean virtualenv before being written here.
+
+**Prerequisites:** Python **3.10+** (verified on 3.14.6). Nothing else — no Node, no build step, no database
+server, no Docker. The app is pure Python plus a static single-page front end.
+
+### 1. Get the code
 
 ```bash
 git clone https://github.com/siddheshpradhan39/Case-Review-for-Fraud-Investigators.git
 cd Case-Review-for-Fraud-Investigators
+```
 
+### 2. Install
+
+```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+```
 
-cp .env.example .env            # then put your OpenRouter key in .env
+Installs 7 packages: `fastapi`, `uvicorn`, `httpx`, `pydantic`, `python-dotenv`, `pytest`, `python-pptx`.
+Takes about 30 seconds.
+
+### 3. Set environment variables
+
+```bash
+cp .env.example .env
+```
+
+Then open `.env` and set **one** variable — everything else has a working default:
+
+```bash
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+```
+
+A free key from [openrouter.ai](https://openrouter.ai) is enough; the default model chain is four free
+tool-calling models. `.env` is git-ignored, so the key is never committed. **Without a key the app still runs
+fully** in rules-only mode — the queue, scoring, briefing, notes, bulk clear, Rules tab and Blocklist all work,
+and the AI columns simply stay empty rather than inventing content. Full variable reference is in
+[Configuration](#configuration) below.
+
+### 4. Start
+
+```bash
 .venv/bin/python -m uvicorn app.main:app --port 8000
 ```
 
-Open **http://localhost:8000**.
+<details>
+<summary>Windows</summary>
 
-**What happens on first start**
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+python -m uvicorn app.main:app --port 8000
+```
+</details>
 
-1. The app ingests `data/sample_cases.csv`, computes derived features, calibrates thresholds, evaluates all rules and scores every case. The **rules-only queue is usable immediately**.
-2. If an API key is configured, AI triage starts in the background, highest-risk cases first. Progress shows in the top-right pill. On free models a full pass takes roughly 10 minutes; results are cached and only stale or missing cases are re-run afterwards.
-3. Without a key the app still runs fully in rules-only mode; AI columns stay empty and nothing is invented.
+Expected terminal output:
 
-**Personas.** Use the switch in the top right to act as *Alex Rivera (Investigator)* or *Sam Okafor (Supervisor)*. There is deliberately **no authentication** (out of scope for the brief). The persona resets to Investigator on every page reload; supervisor-only actions (approve escalations, activate blocklist entries, override declines) need the Supervisor persona.
+```
+INFO:     Started server process [12345]
+INFO:     Waiting for application startup.
+ingested 50 cases; LLM configured=True models=['deepseek/deepseek-v4-flash-0731:free', ...]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+```
 
-**Get a key.** A free key from [openrouter.ai](https://openrouter.ai) is enough. Never commit it: `.env` is git-ignored.
+### 5. Open
 
-**Windows.** Activate the virtualenv (`.venv\Scripts\activate`) and run `python -m uvicorn app.main:app --port 8000`.
+> **http://localhost:8000**
+
+You should land on the **Morning briefing** with 50 cases scored — 8 CRITICAL, 8 HIGH, 5 MEDIUM, 29 LOW.
+There is also a `GET /healthz` endpoint that returns `{"ok": true}` if you want to check the server without a
+browser.
+
+### What happens on first start
+
+1. `data/sample_cases.csv` is ingested, derived features are computed, thresholds are calibrated from the
+   distribution, all 17 rules are evaluated and every case is scored. **The rules-only queue is usable
+   immediately** — this takes under a second and needs no API key.
+2. If a key is configured, AI triage starts in the background, highest-risk cases first. Progress shows in the
+   pill at the top right. On free models a full pass over 50 cases takes roughly 10 minutes. Results are cached,
+   so later runs only re-assess cases that are new or stale.
+3. Cases the model could not assess are shown as **"AI unavailable"** with the provider error. Nothing is
+   fabricated to fill the gap.
+
+### Personas
+
+The switch in the top right selects *Alex Rivera (Investigator)* or *Sam Okafor (Supervisor)*. There is
+deliberately **no authentication** — it is out of scope in the brief — but the authority split is enforced
+server-side: approving escalations, activating blocklist entries and overriding declines all require the
+Supervisor persona. The persona resets to Investigator on page reload.
+
+### Verify the install
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+Expected: `88 passed`. To regenerate the evaluation report in `docs/EVAL.md`:
+
+```bash
+.venv/bin/python -m app.evals.run --perturb --shadow
+```
+
+### If something goes wrong
+
+| Symptom | Cause and fix |
+|---|---|
+| `Address already in use` | Something else holds port 8000. Start on another port: `--port 8001`, and open that port instead. |
+| Queue loads but every AI column is empty | No `OPENROUTER_API_KEY` in `.env`, or the process was started before `.env` existed. Check the `LLM configured=` line in the startup output, then restart. |
+| Cases show **AI unavailable** with `free-models-per-day` | The OpenRouter free-tier daily quota is spent. Wait for the reset or add credit, then click **assess-all** in the UI. This is the provider, not the app. |
+| `ModuleNotFoundError` | The virtualenv is not being used. Run the commands with the `.venv/bin/` prefix exactly as written, or activate the venv first. |
+| A button looks missing after an update | Hard-refresh once (`Cmd/Ctrl + Shift + R`). Assets are served with cache-busting, but an already-open tab can hold the old copy. |
+
+### Optional: run it in Docker
+
+```bash
+docker build -t junior-ai-investigator .
+docker run -p 8000:8000 -e OPENROUTER_API_KEY=sk-or-v1-... -v $(pwd)/data:/var/data junior-ai-investigator
+```
+
+`DATA_DIR` (default `/var/data` in the image) holds the SQLite database, so mounting a volume preserves cases,
+notes and decisions across restarts. Setting `APP_PASSWORD` turns on a shared-password gate, which matters if
+the app is ever exposed beyond localhost — see [`render.yaml`](render.yaml) for a deployment blueprint.
 
 ---
 
@@ -288,6 +388,7 @@ Latest results are in [`docs/EVAL.md`](docs/EVAL.md): 10/10 behavioural invarian
 | File | Purpose |
 |---|---|
 | [`docs/Writeup.pptx`](docs/Writeup.pptx) | The 4-slide write-up (product, architecture, trade-offs, human-in-the-loop) with speaker notes. Rebuild: `python docs/make_deck.py`; visual QA: `python docs/preview_deck.py` |
+| [`docs/Technical_Report.pdf`](docs/Technical_Report.pdf) | 20-page technical report: scope, detailed architecture, evaluation, rejected alternatives, roadmap, and scaling to production volume. Rebuild: `python docs/make_report.py` |
 | [`docs/WRITEUP.md`](docs/WRITEUP.md) | The same content in prose, with more detail |
 | [`docs/RULES.md`](docs/RULES.md) | Data evidence for every threshold (regenerate: `python -m app.report`) |
 | [`docs/EVAL.md`](docs/EVAL.md) | Evaluation report (regenerate: `python -m app.evals.run`) |
@@ -331,15 +432,16 @@ In priority order, with the reasoning in [`docs/WRITEUP.md`](docs/WRITEUP.md):
 
 ## Troubleshooting
 
+Common install and start-up problems are covered in [Quick start → If something goes wrong](#if-something-goes-wrong).
+Beyond those:
+
 | Symptom | Cause and fix |
 |---|---|
-| A new button or tab does not appear | The browser cached old JS. Hard refresh (Cmd/Ctrl+Shift+R). The server now sends no-cache headers and versioned asset URLs, so this should only happen once. |
-| "LLM not configured" in the top right | Set `OPENROUTER_API_KEY` in `.env` and restart. |
-| Some cases show "unavailable" | Free models were rate-limited or overloaded on every fallback. It is stored honestly; press *Re-run AI assessment* or restart to retry. |
 | Supervisor actions are refused | The persona resets to Investigator on reload. Switch to *Sam Okafor · Supervisor* (top right). |
 | A change to rules or notes made cases "stale" | Expected: their inputs changed. The banner offers a one-click re-assess of just those cases. |
-| Want a clean slate | Stop the server, delete `data/cases.db`, start again. |
-| Run evals offline | `LLM_MODE=record` once against the live API, then `LLM_MODE=replay` (uses `data/cassette.json`, git-ignored). |
+| Want a clean slate | Stop the server, delete `data/cases.db`, start again. The 50 cases re-ingest on the next start. |
+| Run evals offline / deterministically | `LLM_MODE=record` once against the live API, then `LLM_MODE=replay` (uses `data/cassette.json`, git-ignored). |
+| Rebuild calibration after changing the CSV | `python -m app.calibration` rewrites `data/calibration.json` and `docs/RULES.md`. |
 
 ---
 

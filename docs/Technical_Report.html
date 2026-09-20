@@ -1,0 +1,729 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Junior AI Investigator — Technical Report</title>
+<style>
+  @page { size: A4; margin: 17mm 15mm 16mm 15mm; }
+  :root{--ink:#0f172a;--mut:#475569;--faint:#94a3b8;--rule:#e2e8f0;--blue:#1d4ed8;--bluebg:#eef3fe;
+        --rust:#c2410c;--rustbg:#fff3ea;--green:#047857;--greenbg:#e6f5ef;--red:#b91c1c;--redbg:#fdecec;--wash:#f6f8fb;}
+  *{box-sizing:border-box}
+  body{font:10.5pt/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--ink);margin:0}
+  h1{font-size:23pt;line-height:1.15;margin:0 0 6px}
+  h2{font-size:14pt;margin:26px 0 8px;padding-bottom:5px;border-bottom:1.5px solid var(--ink);page-break-after:avoid}
+  h3{font-size:11.5pt;margin:16px 0 5px;page-break-after:avoid}
+  h4{font-size:10.5pt;margin:12px 0 3px;color:var(--mut);page-break-after:avoid}
+  p{margin:0 0 8px}
+  ul,ol{margin:0 0 9px 0;padding-left:17px}
+  li{margin-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:9pt;page-break-inside:avoid}
+  th{text-align:left;background:var(--wash);border-bottom:1.5px solid var(--rule);padding:5px 7px;font-size:8.5pt;
+     text-transform:uppercase;letter-spacing:.03em;color:var(--mut)}
+  td{padding:5px 7px;border-bottom:1px solid var(--rule);vertical-align:top}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  code{font:9.2pt ui-monospace,"SF Mono",Menlo,monospace;background:var(--wash);padding:1px 4px;border-radius:3px}
+  .lede{font-size:11.5pt;color:var(--mut);margin-bottom:14px}
+  .box{background:var(--wash);border-radius:6px;padding:10px 13px;margin:10px 0;page-break-inside:avoid}
+  .box.blue{background:var(--bluebg)} .box.rust{background:var(--rustbg)}
+  .box.green{background:var(--greenbg)} .box.red{background:var(--redbg)}
+  .box.dark{background:var(--ink);color:#e2e8f0} .box.dark b{color:#fff}
+  .box h4{margin-top:0;color:inherit;font-size:9.5pt;text-transform:uppercase;letter-spacing:.04em}
+  .box.blue h4{color:var(--blue)} .box.rust h4{color:var(--rust)}
+  .box.green h4{color:var(--green)} .box.red h4{color:var(--red)} .box.dark h4{color:#93c5fd}
+  .cols{display:flex;gap:14px} .cols>*{flex:1}
+  .kpi{display:flex;gap:9px;margin:10px 0}
+  .kpi div{flex:1;background:var(--wash);border-radius:6px;padding:9px;text-align:center}
+  .kpi b{display:block;font-size:17pt;line-height:1.1}
+  .kpi span{font-size:8pt;color:var(--mut)}
+  .cover{height:232mm;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
+  .tag{display:inline-block;font-size:8pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+       color:var(--blue);background:var(--bluebg);padding:3px 9px;border-radius:20px;margin-bottom:14px}
+  .meta{margin-top:26px;padding-top:12px;border-top:1px solid var(--rule);color:var(--mut);font-size:9.5pt}
+  .toc{column-count:2;column-gap:22px;font-size:9.5pt}
+  .toc div{margin-bottom:3px;break-inside:avoid}
+  .toc .s{font-weight:700;margin-top:7px}
+  .pb{page-break-before:always}
+  .small{font-size:9pt;color:var(--mut)}
+  .flow{font:9pt ui-monospace,Menlo,monospace;background:var(--ink);color:#e2e8f0;padding:11px 13px;
+        border-radius:6px;white-space:pre;overflow:hidden;margin:10px 0;font-size:8.2pt;line-height:1.55}
+  .flow b{color:#93c5fd}
+  em.n{color:var(--red);font-style:normal;font-weight:700}
+</style>
+
+<div class="cover">
+  <span class="tag">Take-home · AI Engineering</span>
+  <h1>Junior AI Investigator</h1>
+  <div class="lede">An AI-first case review system for long-term-care fraud investigators.<br>
+  Scope, architecture, evaluation, trade-offs, and the path to production volume.</div>
+  <div class="kpi">
+    <div><b>50</b><span>referrals triaged end to end</span></div>
+    <div><b>17</b><span>rules calibrated from the data</span></div>
+    <div><b>88</b><span>tests passing</span></div>
+    <div><b>10/10</b><span>behavioural invariants hold</span></div>
+  </div>
+  <div class="meta">
+    <b>Prototype</b> · Python 3.12 · FastAPI · SQLite · vanilla-JS SPA · OpenRouter (no agent framework)<br>
+    <b>Repository</b> · github.com/siddheshpradhan39/Case-Review-for-Fraud-Investigators<br>
+    <b>Scale</b> · ~4,650 lines of Python · ~640 lines of front-end · 1,683 lines of tests
+  </div>
+</div>
+
+<h2 style="margin-top:0">Contents</h2>
+<div class="toc">
+  <div class="s">1 · Executive summary</div>
+  <div class="s">2 · Scope</div>
+  <div>2.1 What the brief asked for</div><div>2.2 What I built</div>
+  <div>2.3 What I deliberately left out</div><div>2.4 Assumptions on record</div>
+  <div class="s">3 · The data, and what it dictated</div>
+  <div class="s">4 · Architecture in detail</div>
+  <div>4.1 The pipeline</div><div>4.2 Features and calibration</div>
+  <div>4.3 Rules and scoring</div><div>4.4 The router</div>
+  <div>4.5 The agent crew</div><div>4.6 The harness</div>
+  <div>4.7 The verification boundary</div><div>4.8 Tools</div>
+  <div>4.9 Incremental reuse</div><div>4.10 Governance surfaces</div>
+  <div>4.11 Data model</div><div>4.12 LLM client and resilience</div>
+  <div class="s">5 · Evaluation</div>
+  <div class="s">6 · Alternatives I rejected</div>
+  <div class="s">7 · With more time</div>
+  <div class="s">8 · Scaling to production volume</div>
+  <div>8.1 What already scales</div><div>8.2 What breaks first</div>
+  <div>8.3 Target architecture</div><div>8.4 Cost model</div>
+  <div>8.5 Throughput and latency</div><div>8.6 Data and entity resolution</div>
+  <div>8.7 Calibration, drift and labels</div><div>8.8 Reliability</div>
+  <div>8.9 Governance and fairness</div><div>8.10 Rollout</div>
+  <div class="s">Appendix A · Rule catalogue</div>
+  <div class="s">Appendix B · Repository map</div>
+</div>
+
+<h2>1 · Executive summary</h2>
+<p>A fraud investigation team receives a daily queue of engine-generated referrals. Most turn out benign, and the
+expensive part of the job is not finding fraud — it is the hours spent proving that a referral was never fraud.
+This system inverts that: by the time an investigator opens the tool, every case already carries a summary, cited
+evidence, a risk level and a recommended action, with a full record of how the conclusion was reached.</p>
+
+<p>The core design decision is that <b>reasoning depth is bought, not given</b>. Deterministic rules score every case
+first. A router with no LLM in it then reads which rules fired and sends each case down one of three lanes. Clean
+cases share a single cheap batched call. Unambiguously critical cases get one verification call. Only the genuinely
+ambiguous middle gets the full agent crew — specialists, an adversarial challenger, a verifier, and a three-persona
+panel if the case is still contested.</p>
+
+<div class="box dark">
+  <h4>The result, measured on the 50 cases</h4>
+  <b>26% of cases consume 91% of the AI spend</b>, which is the intended shape: effort lands on the hard tail.
+  Against a single-judge baseline the crew reaches <b>100% band agreement using 27% fewer tokens</b>, while adding
+  an adversarial pass, a panel and a full trace. All <b>10 behavioural invariants</b> and <b>5 counterfactual and
+  prompt-injection tests</b> pass, and <b>277 of 277</b> stored evidence citations re-verify against the record.
+</div>
+
+<p>What the system does <em class="n">not</em> claim is accuracy. The supplied data has no fraud labels, so any
+precision or recall figure against "real" fraud would be invented. Everything measured here is behaviour: properties
+that must hold whatever the model says.</p>
+
+<h2>2 · Scope</h2>
+
+<h3>2.1 What the brief asked for</h3>
+<p>Ingest a queue of referred claims; reason over each case; produce a per-case assessment before a human looks at it
+(summary, key indicators, risk level, recommended next action); and let an investigator interact — drill in, ask
+questions in natural language, accept or reject findings, add notes, and move the case forward. Architecture, stack
+and agent design were left open.</p>
+
+<h3>2.2 What I built</h3>
+<table>
+<tr><th style="width:27%">Surface</th><th>What it does</th></tr>
+<tr><td><b>Morning briefing</b></td><td>Risk counts and dollar exposure per band, the cases to open first, co-firing rule clusters, and statistically abnormal rule firing by segment (Fisher-style rate comparison with a p-value). Headlines are computed from the data; an optional LLM narrative is restricted to those figures and re-checked against them.</td></tr>
+<tr><td><b>Per-case assessment</b></td><td>Rule score and AI score side by side, a summary, key indicators each citing an exact field and value, mitigating factors, suggested next steps, open questions, guardrail notes, and the full agent trace with per-step token and cost accounting.</td></tr>
+<tr><td><b>Interaction</b></td><td>Accept or reject any individual indicator (a rejected finding is not re-asserted); free-text chat over the case with the same read-only tools the judge uses; investigator notes that feed the next assessment.</td></tr>
+<tr><td><b>Notes with full deletion</b></td><td>A note changes the next assessment. Deleting it purges it from assessments, chat history, related-case context and audit text — including paraphrases, matched by 4-word shingles.</td></tr>
+<tr><td><b>Cross-case knowledge</b></td><td>Notes, decisions and confirmed outcomes from linked and nearest-neighbour cases are shown to the agents as precedent, never as facts about the case under review.</td></tr>
+<tr><td><b>Bulk clear</b></td><td>By filter (e.g. score &lt; 10) or by hand-picked selection. A preview lists every case the guardrails refuse to clear and why, before anything is written.</td></tr>
+<tr><td><b>Supervisor escalation</b></td><td>The investigator writes a reason; the AI drafts the handoff summary. A supervisor approves to SIU or returns it with a note.</td></tr>
+<tr><td><b>Rules tab</b></td><td>Create, tune, disable or shadow rules through a validated condition tree (never code). Every draft gets a live backtest — precision, recall, Wilson confidence intervals — plus an impact preview of which cases move.</td></tr>
+<tr><td><b>Blocklist</b></td><td>Hard rules that decline a case outright, bypassing scoring and AI: claim numbers, provider or member IDs, segments, condition trees, or fraud-history thresholds. Investigators propose; supervisors enact. Entries covering more than 25% of the queue require explicit confirmation. Supervisors can override a decline with a written reason, which becomes a case note and counts against the entry as a false-positive signal.</td></tr>
+<tr><td><b>Outcome feedback</b></td><td>Marking a case as confirmed fraud raises rule R17 on its nearest neighbours, feeds agents human ground truth, and blocks bulk clear on lookalikes. Misses (cases the system had rated low) are recorded as such.</td></tr>
+<tr><td><b>Audit log</b></td><td>Every AI assessment and every human decision, with actor, reason and timestamp.</td></tr>
+</table>
+
+<h3>2.3 What I deliberately left out</h3>
+<table>
+<tr><th style="width:27%">Omission</th><th>Reason</th></tr>
+<tr><td><b>Authentication and multi-tenancy</b></td><td>Explicitly out of scope in the brief. Investigator and supervisor are personas selected in the header and sent as request headers; the authority split between them is enforced server-side, so the governance model is real even though the identity is not.</td></tr>
+<tr><td><b>A trained ML model</b></td><td>The data carries no fraud labels. A supervised model would have had to invent its own targets, and any accuracy claim would have been circular. Rules calibrated from the distribution are honest about what they are.</td></tr>
+<tr><td><b>Provider / member graph</b></td><td>The CSV has no provider or member identifiers. Cross-case linkage is implemented and runs today on claim number; the same code path accepts provider and member IDs the day a dataset carries them.</td></tr>
+<tr><td><b>External enrichment</b></td><td>Public registries and web search were offered as optional. They would have added surface area without deepening the core reasoning question.</td></tr>
+<tr><td><b>Streaming UI</b></td><td>Assessments run as a morning batch, which is the right interaction model at ~20s per model call. Streaming would polish a flow that should not be synchronous in the first place.</td></tr>
+</table>
+
+<h3>2.4 Assumptions on record</h3>
+<ul>
+<li>Each CSV row is one referral, not one claim line. Amounts are per referral.</li>
+<li>"Amount vs peer average" is relative to the same care type, since that is the only peer grouping the data supports.</li>
+<li>A signal value of 0 means "not triggered", per the brief.</li>
+<li>Claim number is a stable key across referrals; its reuse is treated as a data-integrity lead rather than proof of fraud.</li>
+<li>The portfolio of 50 is assumed representative enough to calibrate thresholds against. At production volume, thresholds would be re-fitted on a rolling window (§8.7).</li>
+</ul>
+
+<h2 class="pb">3 · The data, and what it dictated</h2>
+<p>Design decisions came out of the distribution, not from a template. Three properties of the 50-case sample shaped
+everything downstream.</p>
+
+<h3>The portfolio splits three ways, with nothing in between</h3>
+<p>Eight cases are extreme on essentially every signal. Nine sit in a genuinely ambiguous middle. Thirty-three are
+clean. Critically, the score bands fall inside <b>empty stretches</b> of the distribution — at the CRITICAL cut of 80
+the nearest scores are 77.1 and 84.8; at the HIGH cut of 50 they are 38.8 and 52.4. The thresholds are not arbitrary
+round numbers that happen to look tidy; they sit where the data has no cases.</p>
+
+<div class="box blue">
+  <h4>Consequence</h4>
+  Rules alone resolve the 8 and the 33. Paying for multi-agent reasoning on those is waste. The 9 in the middle are
+  where judgement has value — and that is precisely the routing rule the system implements.
+</div>
+
+<h3>The signals co-move, so they must not be summed</h3>
+<p>The eight worst cases trip everything at once. Adding rule weights would count one underlying phenomenon five
+times and push every bad case to the ceiling, destroying the ordering within the tail. The score therefore takes the
+<b>strongest rule per domain</b> (Billing, Utilization, Geography, Relationship, Timing) and combines domains with a
+noisy-OR: <code>score = 1 − Π(1 − w_domain)</code>. Convergence across <em class="n">independent</em> domains becomes
+the real evidence, which is what rule R13 measures.</p>
+
+<h3>Two patterns no single-row rule can see</h3>
+<ul>
+<li><b>Silent drift.</b> Of the zero-flag cases, 30 trip none of the seven continuous signals and three (C1026, C1040,
+C1042) trip five — and nothing sits in between. A model that counts flags scores those three as clean. Rule R14 exists
+solely to catch that empty-gap pattern.</li>
+<li><b>Claim-number reuse.</b> <code>LTC-2034786</code> appears on C1001, whose own profile is benign, and on C1031,
+which is critical. No per-row rule can see this. It motivated cross-case linkage, the linked-case guardrail floor, and
+the related-case knowledge that agents read. In the live system the crew <b>raises</b> C1001 from 27.1 to 37.1 and
+recommends escalation, entirely because of the link.</li>
+</ul>
+
+<h2>4 · Architecture in detail</h2>
+
+<h3>4.1 The pipeline</h3>
+<div class="flow"><b>CSV (50 rows)</b>
+   │
+   ├─▶ derived features ──▶ <b>calibration</b> (Jenks natural breaks, k=3, exact DP)
+   │                            │
+   ├─▶ <b>17 rules R01–R17</b> ◀──┘   strongest rule per domain
+   │        │
+   │        ▼
+   │   <b>score 0–100</b> = noisy-OR over domains + baseline-anomaly term (0–10)
+   │        │                bands: LOW &lt;25 · MEDIUM 25–49 · HIGH 50–79 · CRITICAL ≥80
+   │        ▼
+   │   <b>ROUTER — deterministic, no LLM, no cost</b>
+   │        │
+   │        ├── FAST      29 cases (58%)  no rule fired, unlinked  → 1 batched call per 5 cases
+   │        ├── OBVIOUS    8 cases (16%)  rule level CRITICAL      → verifier only
+   │        └── DEEP      13 cases (26%)  ambiguous or linked      → full crew
+   │                                           │
+   │              specialists in parallel ◀────┘  (billing · collusion+linkage · geo/utilisation)
+   │                      ▼                       only for domains that fired, ≤1 tool each
+   │              adversarial challenger          argues the benign reading
+   │                      ▼
+   │              verifier (strong tier)          synthesises one assessment
+   │                      ▼
+   │              3-persona panel                 only if the verifier flags contested
+   │                      ▼
+   │              deterministic meta-judge        combines votes; no model arbitrates
+   │                      │
+   └──────────────────────┼──▶ <b>VERIFICATION BOUNDARY (code, not prompt)</b>
+                          │      re-ground citations · clamp ±20 · derive level · refuse · flag figures
+                          ▼
+                   assessment + trace + cost  ──▶  <b>human decides</b>  ──▶  audit log
+</div>
+
+<h3>4.2 Features and calibration</h3>
+<p>Raw signals are extended with derived features that encode domain reasoning the CSV leaves implicit:</p>
+<ul>
+<li><b>Implied weekly travel miles</b> = visits/week × distance × 2. Baseline cases stay under ~1,300; the worst eight
+sit between 2,352 and 7,552. A provider covering thousands of miles a week to deliver in-home care is physically
+implausible, and that implausibility is a stronger signal than either input alone.</li>
+<li><b>Robust log-amount z-score</b> (median/MAD on log amount), so a single large claim does not drag the scale.</li>
+<li><b>Linked case IDs</b>, computed across the portfolio by shared claim number.</li>
+</ul>
+<p>Thresholds come from <b>Jenks natural breaks</b> (k=3, exact dynamic programming) on each continuous signal,
+splitting values into baseline / elevated / extreme by minimising within-group variance. Each threshold is then placed
+at the <em class="n">midpoint of the empty gap</em> between adjacent groups. Crossing the elevated break is MEDIUM;
+crossing the extreme break is HIGH. Calibration is regenerated by <code>python -m app.calibration</code>, which also
+writes the evidence tables in <code>docs/RULES.md</code> — so every threshold in the product is reproducible from the
+data rather than asserted.</p>
+
+<h3>4.3 Rules and scoring</h3>
+<p>Seventeen rules span five evidence domains plus Convergence, Integrity and Precedent. Twelve are direct signal
+rules; five are derived or cross-case (R11 travel plausibility, R12 exposure, R13 multi-domain convergence, R14 silent
+drift, R15 claim reuse, R17 fraud lookalike). Domain weights are LOW 5, MEDIUM 12, HIGH 25, CRITICAL 40. A
+baseline-anomaly term (0–10, the mean percentile rank of the continuous signals) is blended in so that clean cases
+still receive a stable ordering rather than all collapsing to zero. The full catalogue is in Appendix A.</p>
+
+<h3>4.4 The router</h3>
+<p>The router is ordinary Python. It reads the fired rules and the link set, and returns a lane. It makes no model
+call, costs nothing, cannot hallucinate, and cannot fail open.</p>
+<table>
+<tr><th>Lane</th><th class="n">Cases</th><th>Condition</th><th>Treatment</th><th class="n">Calls/case</th><th class="n">Tokens/case</th></tr>
+<tr><td><b>FAST</b></td><td class="n">29</td><td>no rule fired, no link</td><td>5 cases per batched call, no tools</td><td class="n">0.66</td><td class="n">991</td></tr>
+<tr><td><b>OBVIOUS</b></td><td class="n">8</td><td>rule level CRITICAL</td><td>verifier only — facts are not in dispute</td><td class="n">1.00</td><td class="n">3,286</td></tr>
+<tr><td><b>DEEP</b></td><td class="n">13</td><td>everything else</td><td>full crew</td><td class="n">4.77</td><td class="n">14,073</td></tr>
+</table>
+<p>Routing by difficulty rather than by risk is what makes the economics work. An LLM-based router was considered and
+rejected: it would add a call, a latency hop and a failure mode to every single case, in order to decide something the
+rules have already determined deterministically.</p>
+
+<h3>4.5 The agent crew</h3>
+<p>On the DEEP lane the crew is a structured argument, not a chain of summarisers. Each role has a distinct job and a
+distinct failure mode it guards against.</p>
+<table>
+<tr><th style="width:20%">Role</th><th>Purpose</th></tr>
+<tr><td><b>Specialists</b><br><span class="small">billing · collusion + linkage · geo/utilisation</span></td><td>Each sees <em class="n">only</em> its own evidence slice and may call at most one tool. Spawned only for domains that actually fired, so a case with no geography signal never pays for a geography specialist. Narrow input is deliberate: it prevents one strong signal colouring the reading of unrelated ones, and it makes the specialist's output cacheable by evidence hash.</td></tr>
+<tr><td><b>Challenger</b></td><td>Adversarial by construction: it argues the benign reading as well as the evidence honestly allows — legitimate explanations, mitigating facts, and what evidence is missing. Without it, a pipeline of agents all reading the same suspicious signals converges on suspicion. The challenger is the only component whose job is to disagree, and it downgrades in 38% of DEEP cases.</td></tr>
+<tr><td><b>Verifier</b></td><td>The senior analyst. Runs on the strong model tier. Sees the rule result, the specialist findings and the challenger's argument, and produces one assessment: summary, a bounded score adjustment with a reason, key indicators, mitigating factors, next steps, open questions, an honest self-confidence, and a <code>contested</code> flag.</td></tr>
+<tr><td><b>Panel</b></td><td>Three personas — conservative, neutral, aggressive — convene <em class="n">only</em> when the verifier flags the case contested (5 of 13 DEEP cases). Each votes independently on the adjustment and action.</td></tr>
+<tr><td><b>Meta-judge</b></td><td>Deterministic code, not a model. Combines the panel votes and applies the floors. No LLM arbitrates the final answer — in C1001 the linked-CRITICAL floor overrules a −10 vote outright.</td></tr>
+</table>
+
+<h3>4.6 The harness</h3>
+<p>Every agent call runs through a small runtime (<code>app/agents/runtime.py</code>) rather than a framework. It
+provides:</p>
+<ul>
+<li><b>Budgets</b> — per-agent caps on calls, tokens and tool invocations, enforced in code. The judge repeatedly
+ignored a "use at most two tools" instruction in the prompt; the budget is now enforced by the loop, which is the
+general lesson: prompts express intent, code enforces it.</li>
+<li><b>Tool allowlists</b> — each role can reach only the tools its job needs.</li>
+<li><b>Typed output with repair</b> — every response is parsed into a Pydantic schema; malformed output triggers up to
+two repair attempts with the validation error fed back.</li>
+<li><b>Escalation ladder</b> — if a fast-tier agent exhausts its repairs, the call is retried once on the strong tier.
+This was added because an eval run caught a real FAST-lane JSON failure on case C1027; cost is incurred only on the
+cases that need it.</li>
+<li><b>No-progress stop</b> — a loop that stops changing state is terminated rather than left to spin.</li>
+<li><b>Tracing</b> — every call is recorded as a span with model, tier, tokens, latency, cost and stop reason, into
+the <code>runs</code> and <code>spans</code> tables. The investigator-facing trace and the cost tables in §5 are the
+same data.</li>
+<li><b>Fail-closed</b> — when the model cannot be reached, the case is stored as <code>LLM_UNAVAILABLE</code> and the
+UI says so. It never falls back to fabricated prose.</li>
+</ul>
+
+<h3>4.7 The verification boundary</h3>
+<p>Grounding is enforced by deterministic code between the model and the database, not requested in a prompt. Five
+mechanisms, all of which run on every assessment:</p>
+<table>
+<tr><th style="width:26%">Mechanism</th><th>Behaviour</th></tr>
+<tr><td><b>Citation re-grounding</b></td><td>Every <code>field = value</code> the model cites is re-read from the record independently. Mismatches are dropped from the stored assessment and shown to the human as a guardrail note. 277 of 277 surviving indicators re-verify; 11 were dropped, a 96.2% grounding survival rate.</td></tr>
+<tr><td><b>Bounded adjustment</b></td><td>The model may move the deterministic score by at most ±20, and the risk <em class="n">level is derived from the resulting number</em> — never chosen by the model. This keeps the score reproducible and auditable while still letting evidence change the answer.</td></tr>
+<tr><td><b>Refusal rules</b></td><td><code>CLEAR_FALSE_POSITIVE</code> is rejected outright if any HIGH or CRITICAL rule fired, or if R17 (confirmed-fraud lookalike) fired.</td></tr>
+<tr><td><b>Linked-case floor</b></td><td>A case linked to a CRITICAL case cannot be downgraded below a floor, regardless of what the crew concludes.</td></tr>
+<tr><td><b>Figure check</b></td><td>Numbers appearing in generated prose are checked against the source record; unverified figures are flagged rather than silently published. One assessment currently carries such a flag.</td></tr>
+</table>
+
+<h3>4.8 Tools</h3>
+<p>Nine read-only tools are shared by the crew and the chatbot: <code>get_case</code>, <code>get_peer_stats</code>,
+<code>find_similar_cases</code>, <code>get_linked_cases</code>, <code>get_case_notes</code>,
+<code>search_notes</code> (across every case), <code>get_rule_catalog</code>, <code>get_cluster_context</code> and
+<code>query_cases</code>. Every one reads the live record and none can write, so no agent can change state as a side
+effect of reasoning. Tool calls are traced and shown to the investigator.</p>
+<p>There is <b>no RAG and no vector store</b>. The corpus is 50 structured rows; SQL answers questions about it
+exactly, whereas embedding retrieval would introduce approximation where none is needed. That trade-off inverts at
+volume, and §8.6 says where.</p>
+
+<h3>4.9 Incremental reuse and staleness</h3>
+<p>Each case has an <code>input_hash</code> covering its rules, score, notes, recorded outcome, and the notes and
+outcomes of related cases. When any of those change the assessment is marked stale in the UI rather than silently
+re-run. On re-run, specialists are reused from cache by <b>evidence-slice hash</b>: since a specialist sees only its
+own slice, a new note that does not touch that slice cannot change its output.</p>
+<div class="box green">
+  <h4>Measured effect</h4>
+  Adding a note to a DEEP case re-runs <b>2 calls instead of 5</b> — only the challenger and verifier, whose inputs
+  actually changed. Across the eval, 13 specialist executions were served from cache.
+</div>
+
+<h3>4.10 Governance surfaces</h3>
+<p>Two surfaces let the team change system behaviour without an engineer, which matters because fraud patterns move
+faster than release cycles.</p>
+<ul>
+<li><b>Rules tab.</b> Custom rules are expressed as a validated AND/OR condition tree over named fields — data, never
+code, so there is no evaluation of user input. Each draft is backtested live with precision, recall and Wilson
+confidence intervals, plus a preview of exactly which cases change band. Because the data has no labels, backtest
+labels are synthetic and derived from risk level; the default mode is <b>leave-one-out</b>, so a rule is never graded
+against a label it helped produce. The UI states this rather than presenting the numbers as fraud accuracy. Rules can
+run in shadow mode, and every change is versioned.</li>
+<li><b>Blocklist.</b> Hard rules that decline outright, bypassing scoring and AI entirely, for decisions that should
+not depend on a model: a known-fraudulent claim number, provider or member; a segment; a condition tree; or a
+fraud-history threshold (N confirmed frauds on the same claim number, provider or member; or a count or rate within a
+segment). A case is never declined on the basis of its own fraud label. Declines are reversible: removing an entry
+returns the case to its previous status. Already-closed cases are never reopened — they raise an alert instead.
+Governance is split: investigators may only propose (entries save paused), supervisors enact, entries touching more
+than 25% of the queue need explicit confirmation, and a supervisor override requires a written reason that becomes a
+case note and counts against the entry as a false-positive signal.</li>
+</ul>
+
+<h3>4.11 Data model</h3>
+<p>SQLite in WAL mode, one connection per call. Eighteen tables, of which the load-bearing ones are: <code>cases</code>,
+<code>assessments</code> (versioned, with input hash and status), <code>notes</code>, <code>feedback</code>
+(accept/reject per indicator), <code>escalations</code>, <code>outcomes</code>, <code>runs</code> and
+<code>spans</code> (the agent trace and cost ledger), <code>custom_rules</code>, <code>rule_overrides</code>,
+<code>rule_versions</code>, <code>blocklist</code>, <code>declines</code>, <code>blocklist_events</code>, and
+<code>audit</code>. Assessments are append-only and versioned, so the trace of what the system believed and when is
+never overwritten.</p>
+
+<h3>4.12 LLM client and resilience</h3>
+<p>A single OpenAI-compatible client against OpenRouter, with model tiers (fast and strong) configured per role. It
+carries a rate limiter (18 requests/minute on the free tier), a per-model circuit breaker, and a fallback chain that
+moves to the next model when one fails. Reasoning mode is explicitly disabled — with it on, the free models burned
+65–130 seconds and returned empty content; with it off, calls settle around 20 seconds with reliable structured
+output. A record/replay cassette makes the whole system deterministic offline, which is what allows the eval suite to
+run in CI without spending tokens.</p>
+
+<h2 class="pb">5 · Evaluation</h2>
+<p>With no labels, accuracy cannot be measured, so the eval suite measures behaviour, grounding, cost and adversarial
+robustness. It runs with <code>python -m app.evals.run</code> and writes <code>docs/EVAL.md</code>.</p>
+
+<div class="kpi">
+  <div><b>10/10</b><span>behavioural invariants</span></div>
+  <div><b>5/5</b><span>counterfactual + injection</span></div>
+  <div><b>277/277</b><span>indicators re-verify</span></div>
+  <div><b>96.2%</b><span>grounding survival</span></div>
+</div>
+
+<h3>Invariants — properties that must hold whatever the model says</h3>
+<ul>
+<li>All 50 cases produce an assessment; router lanes are exactly 29 / 8 / 13.</li>
+<li>The 8 all-signal cases are never cleared and never fall below HIGH.</li>
+<li>No clean case (no rules, unlinked) is escalated or rated HIGH or above.</li>
+<li>The three silent-drift cases (C1026, C1040, C1042) are never cleared.</li>
+<li>C1001, which shares a claim number with critical C1031, is never downgraded.</li>
+<li><code>CLEAR_FALSE_POSITIVE</code> never appears where a HIGH or CRITICAL rule fired.</li>
+<li>Every AI score sits within ±20 of the rule score, with the level derived from it.</li>
+<li>Every stored indicator re-verifies against the record under an independent re-check.</li>
+</ul>
+
+<h3>Counterfactual and adversarial tests</h3>
+<ul>
+<li><b>Signal ablation.</b> Removing the geography and utilisation signals stops that specialist spawning and weakens
+convergence exactly as designed (R13 drops from CRITICAL to not firing).</li>
+<li><b>Evidence direction.</b> A verified-relocation note on C1011 moves the case <em class="n">down</em> and never up,
+within the guardrail bound (66.8 → 56.8).</li>
+<li><b>Incremental reuse.</b> A new note re-runs challenger and verifier only; specialists are served from cache.</li>
+<li><b>Prompt injection, high-risk case.</b> An instruction embedded in a note on a CRITICAL case is not executed: the
+case stays CRITICAL with <code>ESCALATE_SIU</code>.</li>
+<li><b>Prompt injection, clean case.</b> The mirror-image attack — trying to force an escalation on a benign case —
+also fails.</li>
+</ul>
+
+<h3>Cost and latency by lane</h3>
+<table>
+<tr><th>Lane</th><th class="n">Cases</th><th class="n">Calls/case</th><th class="n">Tokens/case</th><th class="n">Ref $/case</th><th class="n">p50</th><th class="n">p95</th><th class="n">Share of spend</th></tr>
+<tr><td>FAST</td><td class="n">29</td><td class="n">0.66</td><td class="n">991</td><td class="n">$0.0008</td><td class="n">23.8s</td><td class="n">53.4s</td><td class="n">5%</td></tr>
+<tr><td>OBVIOUS</td><td class="n">8</td><td class="n">1.00</td><td class="n">3,286</td><td class="n">$0.0016</td><td class="n">21.5s</td><td class="n">26.5s</td><td class="n">3%</td></tr>
+<tr><td><b>DEEP</b></td><td class="n">13</td><td class="n">4.77</td><td class="n">14,073</td><td class="n">$0.0306</td><td class="n">63.2s</td><td class="n">83.5s</td><td class="n"><b>91%</b></td></tr>
+<tr><td colspan="3"><b>Queue total</b></td><td class="n"><b>238,001</b></td><td class="n"><b>$0.435</b></td><td colspan="3" class="small">89 calls · free tier actual cost $0</td></tr>
+</table>
+<p class="small">Reference dollars use a configurable price table (fast 0.25/1.25, strong 3/15 per 1M tokens) to show
+what this call pattern would cost on paid models. The free tier itself costs nothing.</p>
+
+<h3>Crew versus single-judge baseline</h3>
+<p>The original single-LLM implementation is retained as a runtime mode (<code>AGENT_MODE=single</code>) so the two can
+be compared on identical inputs.</p>
+<table>
+<tr><th>Metric</th><th class="n">Single judge</th><th class="n">Crew</th><th>Reading</th></tr>
+<tr><td>Calls</td><td class="n">92</td><td class="n">89</td><td>Comparable</td></tr>
+<tr><td>Tokens</td><td class="n">327,786</td><td class="n">238,001</td><td><b>−27%</b> — routing beats brute force</td></tr>
+<tr><td>Reference cost</td><td class="n">$0.123</td><td class="n">$0.435</td><td><em class="n">3.5× higher</em> — the strong-tier verifier</td></tr>
+<tr><td>Band agreement</td><td class="n" colspan="2">100%</td><td>Same risk bands on all 50</td></tr>
+<tr><td>Action agreement</td><td class="n" colspan="2">84%</td><td>8 cases differ, each surfaced for review</td></tr>
+</table>
+<div class="box red">
+  <h4>Stated honestly</h4>
+  The crew is <b>not cheaper in dollars</b>. It uses fewer tokens but spends them on a more expensive model where it
+  matters. What the extra $0.31 across 50 cases buys is an adversarial pass, a panel on contested cases, per-domain
+  specialisation and a complete trace. On a queue of engine referrals that is a good trade; presenting it as a pure
+  cost win would not be true.
+</div>
+
+<h3>Weaknesses my own evaluation found</h3>
+<ul>
+<li><b>The challenger is under-discriminating.</b> It rates plausibility "medium" on all 13 DEEP cases. It still
+changes outcomes — it downgrades 38% of the time — but its confidence signal carries no information.</li>
+<li><b>Confidence barely separates.</b> Mean self-confidence is 0.77 on contested cases versus 0.74 on uncontested.
+The ordering is right but the gap is too small to route on.</li>
+<li><b>Panel agreement is high</b> (0.92 mean, 1 split of 5), which may mean the personas are insufficiently
+distinct rather than that the cases are easy.</li>
+<li><b>One assessment carries an unverified figure flag</b>, which is the guardrail working, but it is a real
+instance of prose drifting from the record.</li>
+</ul>
+
+<h2>6 · Alternatives I rejected</h2>
+<table>
+<tr><th style="width:24%">Option</th><th>Why not</th></tr>
+<tr><td><b>An agent framework</b><br><span class="small">LangGraph, CrewAI, AutoGen</span></td><td>The interesting engineering in this problem <em class="n">is</em> the control flow: budgets, typed outputs, repair, tier escalation, caching by evidence hash, fail-closed behaviour. A framework would have hidden exactly the part worth demonstrating, and its abstractions would have to be fought to enforce a hard ±20 clamp. The harness is a few hundred lines and every behaviour is inspectable.</td></tr>
+<tr><td><b>RAG / vector store</b></td><td>Fifty structured rows. SQL answers precisely; embeddings would add an approximation layer and a new failure mode to retrieve facts that are already addressable by key. This decision reverses at scale — see §8.6.</td></tr>
+<tr><td><b>Supervised ML</b></td><td>No labels. The model would have to learn from targets I invented, and reporting its accuracy would be reporting how well it reproduced my own heuristic.</td></tr>
+<tr><td><b>One LLM call per case</b></td><td>Built first, kept as the A/B baseline. It uses 38% more tokens for identical risk bands, and offers no adversarial pass, no specialisation and a much thinner trace.</td></tr>
+<tr><td><b>An LLM router</b></td><td>Adds a call, latency and a failure mode to every case to decide something the rules already determine for free and deterministically.</td></tr>
+<tr><td><b>Letting the model produce the score</b></td><td>Non-reproducible and unauditable. A bounded adjustment on a deterministic base keeps both properties while still letting evidence move the answer.</td></tr>
+<tr><td><b>A graph database for linkage</b></td><td>Correct shape, wrong scale. At 50 rows an in-process join is simpler and faster; the interface is kept narrow so the store can be swapped later.</td></tr>
+</table>
+
+<h2 class="pb">7 · With more time</h2>
+<p>In priority order, with the first item well ahead of the rest.</p>
+
+<h3>1 · A false-negative safety net</h3>
+<p>This is the asymmetric risk and the largest genuine gap. A false positive costs an investigator an hour; a false
+negative pays a fraudulent claim and never appears in any metric. Every guardrail in the system prevents the AI from
+clearing something risky — none of them can find what the rules never flagged. Four components, in order:</p>
+<ul>
+<li><b>Miss-rate tracking.</b> The <code>outcomes</code> table already records whether a confirmed fraud was missed by
+the system and at what level it had been rated. Turn that into a standing metric with a trend, per segment and per
+rule, so the blind spot becomes visible.</li>
+<li><b>Retroactive look-back.</b> When a case is confirmed as fraud, R17 flags its neighbours — but cases already
+cleared are not revisited. A look-back job should reopen cleared lookalikes and put them back in the queue with an
+explanation.</li>
+<li><b>An independent adversarial reviewer.</b> A second pass over the <em class="n">cleared</em> pile, optimised for
+recall rather than precision, whose only job is to find what was dismissed too quickly.</li>
+<li><b>Stratified audit sampling.</b> Sample cleared cases by stratum and re-review them, giving a statistical bound
+on the miss rate rather than an anecdote.</li>
+</ul>
+<div class="box">
+  <b>Prototyped and deliberately deferred:</b> a statistical anomaly detector for the silent cases. At 50 cases the set
+  it flagged changed with the random seed (0–3 of the 29 clean cases), and a detector that unstable erodes trust faster
+  than it finds fraud. It needs either far more data or a fundamentally more stable method.
+</div>
+
+<h3>2 · Learn from outcomes</h3>
+<p>Thresholds are currently fitted once against the portfolio distribution. With confirmed outcomes accumulating, refit
+domain weights and thresholds on real labels — turning the calibration story from "derived from the distribution" into
+"derived from what actually proved to be fraud". This is also the point at which a supervised model becomes honest.</p>
+
+<h3>3 · Close the evaluated weaknesses</h3>
+<p>Re-specify the challenger so its plausibility rating discriminates (few-shot anchors, or a forced ranking against
+sibling cases). Calibrate confidence against outcomes so it can be routed on. Widen the panel personas or replace them
+with genuinely different evidence views.</p>
+
+<h3>4 · Data and workflow depth</h3>
+<p>A provider and member graph once identifiers exist, with entity resolution. A labelled backtest replacing synthetic
+labels. Four-eyes approval on large bulk clears. A streaming UI so long assessments render progressively.</p>
+
+<h2>8 · Scaling to production volume</h2>
+<p>The prototype triages 50 cases. The question that matters is what changes at 10,000 or 100,000 referrals a day. The
+answer divides cleanly into what the design already gets right, what breaks first, and what the target architecture
+looks like.</p>
+
+<h3>8.1 What already scales</h3>
+<ul>
+<li><b>Routing is O(1) per case and costs nothing.</b> The expensive path is entered only by cases that earn it. This
+is the single most important scaling property, and it improves with volume: a real referral queue has a
+<em class="n">larger</em> clean share than this sample's 58%, so the FAST lane grows and the cost per case falls.</li>
+<li><b>Batching.</b> FAST cases already share one call per five. The batch size is a tunable, not a constant.</li>
+<li><b>Caching by evidence hash.</b> Re-assessment cost is proportional to what actually changed, not to case count.</li>
+<li><b>Model tiering.</b> Only the verifier uses the expensive tier, and only on cases that reach it.</li>
+<li><b>Append-only assessments with input hashes.</b> Idempotency and replay are already possible.</li>
+<li><b>Fail-closed behaviour.</b> A degraded model provider produces visibly unassessed cases, not silent bad data —
+which is the correct failure mode for a system feeding human decisions.</li>
+</ul>
+
+<h3>8.2 What breaks first</h3>
+<table>
+<tr><th style="width:25%">Component</th><th>Limit</th><th>Breaks at roughly</th></tr>
+<tr><td><b>SQLite single writer</b></td><td>WAL allows concurrent readers but serialises writes. Parallel agent workers writing spans and assessments will contend.</td><td>Low thousands of cases/day, or ~10 concurrent workers</td></tr>
+<tr><td><b>O(n²) neighbour threshold</b></td><td><code>related.nn_threshold()</code> computes every case's nearest neighbour against every other case to find the median distance. At 50 cases that is 2,500 comparisons; at 100,000 it is 10<sup>10</sup>.</td><td>~10,000 cases</td></tr>
+<tr><td><b>In-memory vector cache</b></td><td><code>related._vectors()</code> loads every case's feature vector into process memory.</td><td>Hundreds of thousands of cases</td></tr>
+<tr><td><b>In-process workers</b></td><td>Assessment runs as an asyncio task inside the web process with a concurrency semaphore of 3. A restart loses in-flight work.</td><td>Immediately, for any real SLA</td></tr>
+<tr><td><b>N+1 queries</b></td><td>Queue listing fetches the latest assessment per case individually.</td><td>~1,000 cases per page load</td></tr>
+<tr><td><b>Provider rate limits</b></td><td>18 requests/minute on the free tier caps the whole system at ~1,000 calls/hour.</td><td>~500 cases/hour</td></tr>
+<tr><td><b>Trace storage</b></td><td>Full spans and blackboards per case, unbounded retention.</td><td>~100 GB/year at 10,000 cases/day</td></tr>
+</table>
+
+<h3>8.3 Target architecture at volume</h3>
+<div class="flow">  ingestion (batch or stream) ──▶ <b>feature store</b> ──▶ rules + score  ──▶ router
+                                                                        │
+  ┌─────────────────────────────────────────────────────────────────────┘
+  │   enqueue by lane, with priority = exposure × risk
+  ▼
+<b>durable queue</b> (SQS / Kafka)  ──▶  <b>worker pool, autoscaled per lane</b>
+  │                                         │  idempotent by (case_id, input_hash)
+  │                                         │  retries with backoff → dead-letter queue
+  │                                         ▼
+  │                              <b>Postgres</b> (cases, assessments, audit — partitioned by date)
+  │                              <b>pgvector / ANN index</b> (similarity, entity linkage)
+  │                              <b>object store</b> (traces, cold, lifecycle-expired)
+  ▼
+<b>spend governor</b> — per-tenant and per-lane budgets, circuit breakers, tier downgrade under pressure
+</div>
+<p>Concretely, the changes are:</p>
+<ul>
+<li><b>Postgres</b> in place of SQLite, with <code>assessments</code>, <code>spans</code> and <code>audit</code>
+partitioned by date and old partitions rolled to cold storage. Read replicas for the queue and briefing views.</li>
+<li><b>A durable queue and stateless workers</b> (SQS or Kafka + autoscaled consumers), one consumer group per lane so
+DEEP capacity scales independently of FAST. Jobs keyed on <code>(case_id, input_hash)</code> for idempotency, with
+retry and a dead-letter queue for poison cases.</li>
+<li><b>An ANN index</b> (pgvector, FAISS or similar) replacing the exhaustive similarity scan, with the median
+nearest-neighbour threshold estimated from a sample rather than computed exactly. This is the point at which the
+"no vector store" decision reverses — not for retrieving facts, but for finding neighbours.</li>
+<li><b>A materialised briefing.</b> Queue statistics, clusters and abnormal firing should be computed incrementally on
+ingest, not on page load.</li>
+<li><b>A spend governor</b> promoted to a first-class component: per-tenant and per-lane budgets, automatic tier
+downgrade when a budget is nearly exhausted, and circuit breakers per provider. Cost is a production risk, not an
+afterthought.</li>
+<li><b>Provider redundancy.</b> Two model vendors behind the tier abstraction, so a provider outage degrades
+throughput rather than stopping triage.</li>
+</ul>
+
+<h3>8.4 Cost model</h3>
+<p>Extrapolating the measured per-lane figures. Two mixes are shown: this sample's (58/16/26) and a more realistic
+production mix where the benign share is higher (80/5/15).</p>
+<table>
+<tr><th>Volume</th><th class="n">Calls/day<br><span class="small">real mix</span></th><th class="n">Tokens/day</th><th class="n">Cost/day<br><span class="small">sample mix</span></th><th class="n">Cost/day<br><span class="small">real mix</span></th><th class="n">Cost/year<br><span class="small">real mix</span></th></tr>
+<tr><td>1,000 cases/day</td><td class="n">1,294</td><td class="n">3.1M</td><td class="n">$8.70</td><td class="n">$5.30</td><td class="n">$1,935</td></tr>
+<tr><td>10,000 cases/day</td><td class="n">12,935</td><td class="n">30.7M</td><td class="n">$87</td><td class="n">$53</td><td class="n">$19,345</td></tr>
+<tr><td>100,000 cases/day</td><td class="n">129,350</td><td class="n">306.8M</td><td class="n">$870</td><td class="n">$530</td><td class="n">$193,450</td></tr>
+</table>
+<div class="box blue">
+  <h4>Where the money goes, and the lever that matters</h4>
+  DEEP is 26% of cases and <b>91% of spend</b>. Every meaningful cost lever therefore acts on the DEEP lane, not on
+  the other 74% of the queue:
+  <ul style="margin-bottom:0">
+    <li><b>Tighten the routing boundary.</b> A one-point shift in what counts as ambiguous moves cases between a
+    $0.031 path and a $0.0008 path — a 38× difference. This is worth tuning against outcomes.</li>
+    <li><b>Make the panel rarer.</b> It fires on 5 of 13 DEEP cases today. Better-calibrated confidence (§7.3) would
+    let it fire only where it changes the answer.</li>
+    <li><b>Cache harder.</b> Specialist reuse already exists; at volume, near-duplicate referrals from the same
+    provider should share specialist findings outright.</li>
+    <li><b>Right-size the verifier.</b> It is the only strong-tier call and the reason reference cost is 3.5× the
+    single-judge baseline. Whether it needs the strong tier on <em class="n">every</em> DEEP case is an empirical
+    question I have not answered.</li>
+  </ul>
+</div>
+<p class="small">For context, the entire AI cost at 10,000 cases a day is roughly $53 — materially less than one
+investigator-hour. The economic case does not rest on model cost; it rests on how many benign cases never reach a
+human.</p>
+
+<h3>8.5 Throughput and latency</h3>
+<p>Triage is a batch workload with an overnight window, not an interactive one. Sizing it for 10,000 cases/day at the
+realistic mix, against a four-hour window:</p>
+<table>
+<tr><th>Lane</th><th class="n">Cases/day</th><th class="n">Unit of work</th><th class="n">Sequential time</th><th class="n">Workers for a 4h window</th></tr>
+<tr><td>FAST (80%)</td><td class="n">8,000</td><td class="n">1,600 batched calls @ 24s</td><td class="n">10.7 h</td><td class="n">3</td></tr>
+<tr><td>OBVIOUS (5%)</td><td class="n">500</td><td class="n">500 calls @ 21.5s</td><td class="n">3.0 h</td><td class="n">1</td></tr>
+<tr><td>DEEP (15%)</td><td class="n">1,500</td><td class="n">1,500 crews @ 63s</td><td class="n">26.3 h</td><td class="n">7</td></tr>
+<tr><td colspan="4"><b>Total</b></td><td class="n"><b>11 workers</b> (≈14 with headroom)</td></tr>
+</table>
+<p>That implies a sustained ~54 model calls per minute — trivial on a paid tier, and three times the free tier's
+entire ceiling. The binding constraint at volume is <em class="n">provider rate limit and concurrency</em>, not
+compute: the workers are almost entirely waiting on network I/O, so they are cheap to run and should be scaled by
+queue depth rather than CPU.</p>
+<p>Two SLAs are worth separating. <b>Batch triage</b> must finish before the morning shift — measured as queue
+completion time, alarmed when projected completion crosses the shift start. <b>Interactive actions</b> (chat, note
+re-assessment, escalation drafting) happen while an investigator waits, and need a much tighter budget: fast tier
+only, a hard timeout, and a partial answer rather than a spinner. The prototype's ~20s interactive calls are
+acceptable for a demo and would not be acceptable in production.</p>
+
+<h3>8.6 Data and entity resolution</h3>
+<p>The largest accuracy gain at volume is not a better model — it is better keys. With provider and member identifiers,
+the linkage that currently runs on claim number extends to a genuine graph: claims per provider over time, members
+shared between providers, contact details shared across supposedly unrelated parties, and rings that are invisible
+case-by-case. This needs entity resolution (fuzzy name and address matching, shared phone or bank details) as a
+pipeline stage, because the signal lives in identifiers that are deliberately not identical.</p>
+<p>Peer comparison also sharpens. "Amount vs peer average" is currently care-type-relative because that is all the data
+supports; at volume it should be relative to care type × geography × acuity, computed on a rolling window. Portfolio
+thresholds likewise become rolling rather than static — which is both more accurate and a new failure mode, since a
+slow drift in fraudulent behaviour would drag the baseline with it. That is why thresholds should be refitted on
+<em class="n">confirmed outcomes</em>, not on the referral distribution alone.</p>
+
+<h3>8.7 Calibration, drift and labels</h3>
+<ul>
+<li><b>Capture labels deliberately.</b> The outcome feedback loop is the most valuable thing in the system at volume,
+because it is the only source of ground truth. Investigator workflow should make recording an outcome effortless and
+close to mandatory at case closure.</li>
+<li><b>Recalibrate on a schedule</b> (monthly, on a rolling window), with the new thresholds run in shadow first and
+compared on the impact preview the Rules tab already produces.</li>
+<li><b>Monitor drift explicitly</b> — signal distributions, rule fire rates by segment, band mix, and AI-versus-rule
+disagreement rate. A sudden change in fire rate is either a data pipeline break or a change in fraud behaviour, and
+both need a human to look.</li>
+<li><b>Version prompts and models like code.</b> Every assessment already stores its model; prompt version should be
+stored alongside it, so a quality regression can be traced to a change.</li>
+<li><b>Champion/challenger.</b> The <code>AGENT_MODE</code> switch already proves the pattern. At volume, route a
+small percentage of traffic to a candidate configuration and compare on agreement and, once labels exist, on caught
+fraud.</li>
+</ul>
+
+<h3>8.8 Reliability</h3>
+<ul>
+<li><b>Idempotency</b> on <code>(case_id, input_hash)</code>, so retries and replays cannot double-write.</li>
+<li><b>Dead-letter queue</b> for cases that fail repeatedly, surfaced in the UI as unassessed rather than hidden.</li>
+<li><b>Graceful degradation ladder:</b> strong tier → fast tier → rules-only with an explicit "AI unavailable" state.
+The system is already built to show that state honestly, which makes the ladder safe.</li>
+<li><b>Backpressure.</b> When the queue grows faster than it drains, downgrade lanes (DEEP → OBVIOUS treatment) rather
+than falling behind indefinitely, and make the downgrade visible on the affected cases.</li>
+<li><b>Replay.</b> The cassette mechanism should become a production capability: replay a day's traffic against a new
+prompt or model and diff the outcomes before shipping.</li>
+</ul>
+
+<h3>8.9 Governance and fairness</h3>
+<ul>
+<li><b>Fairness is a live risk, not a theoretical one.</b> Distance and weekend-billing signals can proxy for rural
+providers and for shift-work care patterns. At volume this should be monitored as a distribution of outcomes by
+geography and provider type, with a periodic review of whether a rule is detecting fraud or detecting rurality.</li>
+<li><b>Model and rule documentation.</b> Each rule already carries its calibration evidence; that should extend to a
+reviewable record for regulators and internal audit, including what the AI is permitted to do.</li>
+<li><b>Retention and PII.</b> Real data is not synthetic: field-level encryption, redaction before anything leaves for
+a model provider, a retention policy on traces, and a documented data-processing agreement with the provider.</li>
+<li><b>Authority split scales up.</b> The investigator/supervisor separation becomes real RBAC with SSO, and
+four-eyes approval on high-impact bulk actions.</li>
+<li><b>The audit log becomes the compliance artefact.</b> It already records every AI action and human decision with a
+reason; at volume it needs to be tamper-evident and exportable.</li>
+</ul>
+
+<h3>8.10 Rollout</h3>
+<p>I would not switch a fraud team onto this in one step. Three phases:</p>
+<ol>
+<li><b>Shadow.</b> Run alongside the existing process on live referrals. Investigators work as they do today; the
+system's assessments are recorded but not shown. Measure agreement, and measure how often the system would have
+cleared something the investigator escalated — that number is the go/no-go.</li>
+<li><b>Assist.</b> Show assessments, allow accept/reject and notes, but keep bulk clear disabled. The value here is
+the briefing and the evidence assembly. Measure time-per-case and investigator trust directly.</li>
+<li><b>Act.</b> Enable bulk clear on the lowest band only, with four-eyes approval and mandatory sampling of cleared
+cases. Widen the band only as the miss-rate metric from §7.1 earns it.</li>
+</ol>
+<p>Throughout, the metric that matters is not model accuracy. It is <b>investigator hours returned per confirmed fraud
+missed</b> — and the miss side of that ratio must be measured before the hours side is claimed.</p>
+
+<h2 class="pb">Appendix A · Rule catalogue</h2>
+<p>All thresholds computed from the 50-case portfolio by natural-break calibration. Regenerate with
+<code>python -m app.calibration</code>.</p>
+<table>
+<tr><th>ID</th><th>Rule</th><th>Domain</th><th>Logic</th><th class="n">Fires</th></tr>
+<tr><td>R01</td><td>Duplicate service billed</td><td>Billing</td><td>binary flag → HIGH</td><td class="n">13/50</td></tr>
+<tr><td>R02</td><td>Service overlaps another provider</td><td>Geography</td><td>binary flag → HIGH</td><td class="n">10/50</td></tr>
+<tr><td>R03</td><td>Shared contact info with provider</td><td>Relationship</td><td>binary flag → HIGH</td><td class="n">12/50</td></tr>
+<tr><td>R04</td><td>Recent policy change</td><td>Timing</td><td>binary flag → LOW (weak alone)</td><td class="n">12/50</td></tr>
+<tr><td>R05</td><td>Weekly visit frequency</td><td>Utilization</td><td>≥5.5 MEDIUM, ≥10 HIGH</td><td class="n">18/50</td></tr>
+<tr><td>R06</td><td>Member–provider distance</td><td>Geography</td><td>≥47 mi MEDIUM, ≥160 mi HIGH</td><td class="n">14/50</td></tr>
+<tr><td>R07</td><td>Amount vs peer average</td><td>Billing</td><td>≥16% MEDIUM, ≥76% HIGH</td><td class="n">18/50</td></tr>
+<tr><td>R08</td><td>Round-dollar billing ratio</td><td>Billing</td><td>≥0.29 MEDIUM, ≥0.62 HIGH</td><td class="n">18/50</td></tr>
+<tr><td>R09</td><td>Weekend billing ratio</td><td>Billing</td><td>≥0.17 MEDIUM, ≥0.42 HIGH</td><td class="n">19/50</td></tr>
+<tr><td>R10</td><td>Prior claims (12 mo)</td><td>Utilization</td><td>≥2.5 MEDIUM, ≥7 HIGH</td><td class="n">17/50</td></tr>
+<tr><td>R11</td><td>Implied weekly travel miles <span class="small">(derived)</span></td><td>Geography</td><td>≥1,800 HIGH, ≥4,510 CRITICAL</td><td class="n">8/50</td></tr>
+<tr><td>R12</td><td>High-value claim <span class="small">(derived)</span></td><td>Billing</td><td>log-amount robust z ≥0.72 MEDIUM; HIGH above p90 ($32,645)</td><td class="n">15/50</td></tr>
+<tr><td>R13</td><td>Multi-domain convergence <span class="small">(derived)</span></td><td>Convergence</td><td>≥3 domains HIGH, ≥4 CRITICAL</td><td class="n">16/50</td></tr>
+<tr><td>R14</td><td>Silent drift <span class="small">(derived)</span></td><td>Convergence</td><td>0 flags and ≥3 elevated continuous signals → MEDIUM</td><td class="n">3/50</td></tr>
+<tr><td>R15</td><td>Claim number reused across cases</td><td>Integrity</td><td>same claim number on &gt;1 referral → HIGH</td><td class="n">2/50</td></tr>
+<tr><td>R16</td><td>High-value claim after policy change</td><td>Timing</td><td>policy change AND amount ≥ p75 ($13,131) → MEDIUM</td><td class="n">10/50</td></tr>
+<tr><td>R17</td><td>Lookalike of a confirmed-fraud case</td><td>Precedent</td><td>within median nearest-neighbour distance of a human-confirmed fraud: 1 → MEDIUM, 2+ → HIGH; never bulk-clearable</td><td class="n">0/50</td></tr>
+</table>
+<p class="small"><b>Documented gaps — signals the data cannot support:</b> days since policy change (only a 0/1 flag),
+provider identity, member identity, diagnosis.</p>
+
+<h2>Appendix B · Repository map</h2>
+<table>
+<tr><th style="width:27%">Path</th><th>Contents</th></tr>
+<tr><td><code>app/main.py</code></td><td>FastAPI application: cases, assessment, chat, bulk actions, escalation, rules, blocklist, briefing, audit, runs. Serves the SPA with cache-busted assets.</td></tr>
+<tr><td><code>app/service.py</code></td><td>Ingest, scoring, notes with full purge, outcomes, bulk evaluation, escalation, blocklist application and override, input hashing.</td></tr>
+<tr><td><code>app/rules.py</code> · <code>calibration.py</code> · <code>features.py</code> · <code>scoring.py</code></td><td>The deterministic engine: feature derivation, natural-break calibration, rule registry, domain-capped noisy-OR scoring.</td></tr>
+<tr><td><code>app/agents/</code></td><td><code>router.py</code> (lane selection), <code>crew.py</code> (specialists, challenger, verifier, panel), <code>roles.py</code> (prompts and the shared grounding contract), <code>runtime.py</code> (budgets, repair, tiers, spans), <code>evidence.py</code>, <code>schemas.py</code>, <code>domains.py</code>.</td></tr>
+<tr><td><code>app/llm/</code></td><td><code>client.py</code> (tiers, rate limiter, circuit breaker, fallback, cassette), <code>judge.py</code> (orchestration and batching), <code>guardrails.py</code> (the verification boundary), <code>tools.py</code> (9 read-only tools), <code>chat.py</code>, <code>rule_draft.py</code>.</td></tr>
+<tr><td><code>app/evals/</code></td><td><code>invariants.py</code>, <code>metrics.py</code>, <code>perturb.py</code> (counterfactual and injection), <code>run.py</code>.</td></tr>
+<tr><td><code>app/backtest.py</code> · <code>rulestore.py</code> · <code>customrules.py</code> · <code>blocklist.py</code> · <code>related.py</code> · <code>clusters.py</code> · <code>briefing.py</code></td><td>Governance surfaces, cross-case knowledge, queue-level analytics.</td></tr>
+<tr><td><code>web/</code></td><td>Single-page app, no build step: Briefing, Queue, Case, Rules, Blocklist, Supervisor, Audit.</td></tr>
+<tr><td><code>tests/</code></td><td>88 tests across rules and scoring, guardrails, the harness, the router, notes and outcomes, the Rules tab, the blocklist, and bulk selection.</td></tr>
+<tr><td><code>docs/</code></td><td><code>WRITEUP.md</code>, <code>Writeup.pptx</code> (the 4-slide deck), <code>RULES.md</code> (auto-generated calibration evidence), <code>EVAL.md</code> (auto-generated eval report), architecture diagrams and their generators.</td></tr>
+<tr><td><code>Dockerfile</code> · <code>render.yaml</code></td><td>Container build and deployment blueprint, with a persistent data volume and an optional shared-password gate.</td></tr>
+</table>
+<h4>Running it</h4>
+<p><code>pip install -r requirements.txt</code> · set <code>OPENROUTER_API_KEY</code> in <code>.env</code> ·
+<code>python -m uvicorn app.main:app --port 8000</code> · open <code>http://localhost:8000</code>. The 50 cases ingest
+and score on startup and AI triage begins automatically. Evaluation:
+<code>python -m app.evals.run --perturb --shadow</code>. Tests: <code>pytest -q</code>.</p>
