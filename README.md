@@ -287,7 +287,7 @@ Latest results are in [`docs/EVAL.md`](docs/EVAL.md): 10/10 behavioural invarian
 
 | File | Purpose |
 |---|---|
-| [`docs/Writeup.pptx`](docs/Writeup.pptx) | The 3-slide write-up (product, architecture, human-in-the-loop and trade-offs) with speaker notes. Rebuild: `python docs/make_slides.py` |
+| [`docs/Writeup.pptx`](docs/Writeup.pptx) | The 4-slide write-up (product, architecture, trade-offs, human-in-the-loop) with speaker notes. Rebuild: `python docs/make_deck.py`; visual QA: `python docs/preview_deck.py` |
 | [`docs/WRITEUP.md`](docs/WRITEUP.md) | The same content in prose, with more detail |
 | [`docs/RULES.md`](docs/RULES.md) | Data evidence for every threshold (regenerate: `python -m app.report`) |
 | [`docs/EVAL.md`](docs/EVAL.md) | Evaluation report (regenerate: `python -m app.evals.run`) |
