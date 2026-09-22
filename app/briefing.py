@@ -12,7 +12,27 @@ from .rules import LEVEL_ORDER
 LEVELS = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
 
 
-def stats(top_n=8):
+def _score_key(c):
+    return (-(c["ai"]["ai_score"] if c["ai"] and c["ai"]["ai_score"] is not None else c["score"]), -c["amount"])
+
+
+def top_by_level(cases, limit):
+    """Fill the list one risk level at a time, highest first (LEVELS order), each level sorted by score.
+    A level is only skipped to once the one above it is EXHAUSTED, not merely outscored -- so this never
+    forces an artificial mix: if CRITICAL alone has >= limit cases, the result is CRITICAL-only; if
+    CRITICAL+HIGH together are short of limit, MEDIUM (then LOW) fills the remainder. Adapts to whatever
+    today's data looks like instead of assuming a fixed blend of levels."""
+    out = []
+    for lvl in LEVELS:
+        remaining = limit - len(out)
+        if remaining <= 0:
+            break
+        level_cases = sorted((c for c in cases if c["level"] == lvl), key=_score_key)
+        out += level_cases[:remaining]
+    return out
+
+
+def stats(top_n=25):
     cases = service.list_cases({"sort": "score", "order": "desc"})
     open_cases = [c for c in cases if c["status"] not in service.TERMINAL]
     by_level = {l: {"count": 0, "exposure_usd": 0} for l in LEVELS}
@@ -23,7 +43,7 @@ def stats(top_n=8):
     ai_ok = [c for c in open_cases if c["ai"] and c["ai"]["status"] == "OK"]
     disagree = [c for c in ai_ok if c["ai"]["ai_level"] != c["level"]]
     cl = clusters.cluster_context()
-    top = sorted(open_cases, key=lambda c: (-(c["ai"]["ai_score"] if c["ai"] and c["ai"]["ai_score"] is not None else c["score"]), -c["amount"]))[:top_n]
+    top = top_by_level(open_cases, top_n)
     return {
         "total_cases": len(cases), "open_cases": len(open_cases),
         "status_counts": dict(Counter(c["status"] for c in cases)),
