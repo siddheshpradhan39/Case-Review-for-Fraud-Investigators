@@ -23,6 +23,8 @@ def invalidate():
 def _row_to_rule(r):
     r = dict(r)
     r["logic"] = json.loads(r["logic"])
+    if r.get("mined_stats"):
+        r["mined_stats"] = json.loads(r["mined_stats"])
     return r
 
 
@@ -82,14 +84,19 @@ def _version(rule_id, version, definition, actor, note):
 
 
 # ---------------------------------------------------------------- custom rules
-def create(d, actor, role="investigator"):
+def create(d, actor, role="investigator", origin=None, source_case_id=None, mined_stats=None):
+    """origin/source_case_id/mined_stats: set only for rules the mining pipeline authored (app.rule_mining) so the
+    UI can badge them 'AI-suggested, pending review' and so they can be looked up by the case that spawned them."""
     v = validate_definition(d)
     rid = _next_id()
-    db.run("""INSERT INTO custom_rules(id,name,description,domain,level,status,logic,created_by,created_at,updated_by,updated_at,version)
-              VALUES(?,?,?,?,?,?,?,?,?,?,?,1)""", (rid, v["name"], v["description"], v["domain"], v["level"], v["status"], json.dumps(v["logic"]),
-                                                     actor, db.now(), actor, db.now()))
+    db.run("""INSERT INTO custom_rules(id,name,description,domain,level,status,logic,created_by,created_at,updated_by,updated_at,version,
+              origin,source_case_id,mined_stats)
+              VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?,?,?)""",
+           (rid, v["name"], v["description"], v["domain"], v["level"], v["status"], json.dumps(v["logic"]),
+            actor, db.now(), actor, db.now(), origin, source_case_id, json.dumps(mined_stats) if mined_stats else None))
     _version(rid, 1, v, actor, "created")
-    db.audit(actor, role, "RULE_CREATED", None, {"rule_id": rid, **{k: v[k] for k in ("name", "level", "domain", "status")}, "logic": describe(v["logic"])})
+    db.audit(actor, role, "RULE_CREATED", None, {"rule_id": rid, **{k: v[k] for k in ("name", "level", "domain", "status")},
+             "logic": describe(v["logic"]), **({"origin": origin, "source_case_id": source_case_id} if origin else {})})
     invalidate()
     return get(rid)
 
@@ -203,10 +210,27 @@ def all_rules():
         full = get(r["id"])
         out.append({"rule_id": r["id"], "kind": "custom", "name": r["name"], "domain": r["domain"], "description": r["description"], "level": r["level"],
                     "logic": describe(r["logic"]), "logic_tree": r["logic"], "status": r["status"], "version": full["version"],
-                    "created_by": full["created_by"], "updated_by": full["updated_by"], "updated_at": full["updated_at"]})
+                    "created_by": full["created_by"], "updated_by": full["updated_by"], "updated_at": full["updated_at"],
+                    "origin": full.get("origin"), "source_case_id": full.get("source_case_id"), "mined_stats": full.get("mined_stats")})
     for r in db.rows("SELECT id FROM custom_rules WHERE status='disabled'"):
         full = get(r["id"])
         out.append({"rule_id": full["id"], "kind": "custom", "name": full["name"], "domain": full["domain"], "description": full["description"], "level": full["level"],
                     "logic": describe(full["logic"]), "logic_tree": full["logic"], "status": "disabled", "version": full["version"],
-                    "created_by": full["created_by"], "updated_by": full["updated_by"], "updated_at": full["updated_at"]})
+                    "created_by": full["created_by"], "updated_by": full["updated_by"], "updated_at": full["updated_at"],
+                    "origin": full.get("origin"), "source_case_id": full.get("source_case_id"), "mined_stats": full.get("mined_stats")})
+    return out
+
+
+def suggested():
+    """Shadow custom rules the mining pipeline authored, newest first — the Rules tab's 'pending AI review' list.
+    Same shape as an all_rules() custom entry (human-readable logic string + the raw tree)."""
+    rows = db.rows("SELECT id FROM custom_rules WHERE origin='ai_outcome_mining' AND status='shadow' ORDER BY id DESC")
+    out = []
+    for r in rows:
+        full = get(r["id"])
+        out.append({"rule_id": full["id"], "name": full["name"], "domain": full["domain"], "description": full["description"],
+                    "level": full["level"], "status": full["status"], "origin": full.get("origin"),
+                    "logic": describe(full["logic"]), "logic_tree": full["logic"],
+                    "source_case_id": full.get("source_case_id"), "mined_stats": full.get("mined_stats"),
+                    "created_at": full["created_at"]})
     return out

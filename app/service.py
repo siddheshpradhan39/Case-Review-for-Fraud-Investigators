@@ -167,8 +167,16 @@ def mark_outcome(case_id, outcome, reason, actor, role):
         _set_status(case_id, "FRAUD_CONFIRMED", actor, role, "STATUS_CHANGE", {"reason": reason})
     db.audit(actor, role, "OUTCOME_MARKED", case_id, {"outcome": outcome, "missed_by_system": bool(missed), "system_had_rated": c["level"], "ai_level": ai_level, "reason": reason})
     ingest()  # re-score everything: lookalikes of a confirmed fraud now fire R17
+    suggested = []
+    if outcome == "FRAUD":
+        from . import rule_mining  # local import: rule_mining -> backtest -> service would otherwise cycle
+        try:
+            suggested = [r["id"] for r in rule_mining.mine_and_save(case_id, actor, role)]
+        except Exception as e:
+            db.audit(actor, role, "RULE_MINING_FAILED", case_id, {"error": str(e)[:300]})
     return {"missed_by_system": bool(missed), "rescored_cases": LAST_RESCORED,
-            "lookalikes_flagged": [r["case_id"] for r in db.rows("SELECT case_id, rules FROM cases") if '"R17"' in r["rules"]]}
+            "lookalikes_flagged": [r["case_id"] for r in db.rows("SELECT case_id, rules FROM cases") if '"R17"' in r["rules"]],
+            "suggested_rules": suggested}
 
 
 def retract_outcome(case_id, actor, role):
@@ -178,6 +186,10 @@ def retract_outcome(case_id, actor, role):
     db.run("DELETE FROM outcomes WHERE case_id=?", (case_id,))
     if o["outcome"] == "FRAUD":
         _set_status(case_id, o["prev_status"] or "IN_REVIEW", actor, role, "STATUS_CHANGE", {"reason": "fraud outcome retracted"})
+        from . import rule_mining  # local import: see mark_outcome
+        discarded = rule_mining.discard_from_case(case_id)
+        if discarded:
+            db.audit(actor, role, "RULE_SUGGESTIONS_DISCARDED", case_id, {"rule_ids": discarded})
     purged = _purge(o["reason"], case_id, o["marked_at"])
     db.audit(actor, role, "OUTCOME_RETRACTED", case_id, {"purged": purged})
     ingest()

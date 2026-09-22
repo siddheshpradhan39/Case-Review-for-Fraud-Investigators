@@ -46,3 +46,30 @@ async def draft(description):
         msgs += [{"role": "assistant", "content": msg.get("content") or ""},
                  {"role": "user", "content": f"Invalid ({last}). Reply again with ONLY the corrected JSON rule using only the listed fields."}]
     raise RuleError(f"the AI proposal was invalid and could not be repaired: {last}")
+
+
+NAMING_SYSTEM = """A statistical rule-mining pass over confirmed fraud outcomes found a detection rule for LTC
+insurance claims. You are NOT inventing or changing the rule -- it is already fixed and already validated.
+Your only job is to give it a clear name (3-80 chars) and a one-sentence description a fraud investigator
+would understand, based on the condition and statistics you are given.
+Reply with ONLY this JSON: {"name": "...", "description": "..."}"""
+
+
+async def name_mined_rule(logic, stats, case_id):
+    """Cosmetic LLM polish for a rule app.rule_mining already found and saved. Cannot alter the logic:
+    the caller only reads "name"/"description" off the reply, everything else is ignored even if present."""
+    from ..customrules import describe
+    cond = describe(logic)
+    facts = (f"Condition: {cond}\n"
+             f"Source case: {case_id}\n"
+             f"Fires on {stats.get('k_fraud')}/{stats.get('n_fraud')} confirmed-fraud case(s) and "
+             f"{stats.get('background_rate', 0):.0%} of the rest of the queue (lift {stats.get('lift')}x, "
+             f"n={stats.get('background_n')}).")
+    msgs = [{"role": "system", "content": NAMING_SYSTEM}, {"role": "user", "content": facts}]
+    msg, model = await client.chat(msgs, tier="fast", max_tokens=250, temperature=0.2)
+    raw = client.extract_json(msg.get("content"))
+    name = (raw.get("name") or "").strip()[:80]
+    desc = (raw.get("description") or "").strip()[:400]
+    if len(name) < 3 or len(desc) < 5:
+        raise RuleError("empty naming reply")
+    return {"name": name, "description": desc, "model": model}

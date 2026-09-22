@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS blocklist_events (
 );
 CREATE TABLE IF NOT EXISTS custom_rules (
   id TEXT PRIMARY KEY, name TEXT UNIQUE, description TEXT, domain TEXT, level TEXT, status TEXT, logic TEXT,
-  created_by TEXT, created_at TEXT, updated_by TEXT, updated_at TEXT, version INTEGER
+  created_by TEXT, created_at TEXT, updated_by TEXT, updated_at TEXT, version INTEGER,
+  origin TEXT, source_case_id TEXT, mined_stats TEXT
 );
 CREATE TABLE IF NOT EXISTS rule_overrides (
   rule_id TEXT PRIMARY KEY, enabled INTEGER, level TEXT, elevated REAL, extreme REAL, updated_by TEXT, updated_at TEXT, version INTEGER
@@ -95,9 +96,18 @@ def conn():
         c.close()
 
 
+def _migrate(c):
+    """Guarded ALTER TABLEs for columns added after a DB already existed (CREATE TABLE IF NOT EXISTS won't add them)."""
+    cols = {r["name"] for r in c.execute("PRAGMA table_info(custom_rules)").fetchall()}
+    for col, ddl in (("origin", "TEXT"), ("source_case_id", "TEXT"), ("mined_stats", "TEXT")):
+        if col not in cols:
+            c.execute(f"ALTER TABLE custom_rules ADD COLUMN {col} {ddl}")
+
+
 def init():
     with conn() as c:
         c.executescript(SCHEMA)
+        _migrate(c)
 
 
 def rows(sql, args=()):

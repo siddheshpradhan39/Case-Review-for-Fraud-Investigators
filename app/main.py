@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Streamin
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import backtest, blocklist, briefing, clusters, db, rulestore, service
+from . import backtest, blocklist, briefing, clusters, db, rule_mining, rulestore, service
 from .llm import rule_draft
 from .llm import chat as chat_mod
 from .llm import client, judge
@@ -168,6 +168,8 @@ class Outcome(BaseModel):
 async def mark_outcome(case_id: str, o: Outcome, a: Actor = Depends(actor)):
     res = guard(service.mark_outcome, case_id, o.outcome, o.reason, a.name, a.role)
     _regen()
+    if res.get("suggested_rules") and client.configured():
+        asyncio.create_task(rule_mining.polish_names(res["suggested_rules"]))
     return res
 
 
@@ -371,6 +373,12 @@ def rules_fields():
 @app.get("/api/rules/leaderboard")
 def rules_leaderboard(label_mode: str = "loo", positive_at: str = "HIGH", min_level: Optional[str] = None):
     return guard(backtest.leaderboard, label_mode, positive_at, min_level or None)
+
+
+@app.get("/api/rules/suggested")
+def rules_suggested():
+    """Shadow rules the mining pipeline authored from a confirmed FRAUD outcome, pending human review."""
+    return rulestore.suggested()
 
 
 class BacktestReq(BaseModel):

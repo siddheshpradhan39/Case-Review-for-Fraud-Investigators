@@ -289,7 +289,10 @@ function outcomeModal(id, outcome) {
     <div class="small mut" style="margin-bottom:8px">${fraud ? 'This case becomes ground truth. Similar cases fire R17 and rise in risk; agents see it as a confirmed outcome (and whether the system had missed it); bulk clear refuses lookalikes.' : 'Recorded as precedent that a similar-looking case was benign.'}</div>
     <textarea id="oc" rows="3" placeholder="What was discovered? (required)"></textarea>
     <div class="bar"><button class="${fraud ? 'danger' : 'ok'}" id="ocgo">Record outcome</button><button onclick="closeModal()">Cancel</button></div>`);
-  $('#ocgo').onclick = () => act(async () => { const r = await api(`/cases/${id}/outcome`, 'POST', { outcome, reason: $('#oc').value }); closeModal(); toast((fraud && r.missed_by_system ? 'Recorded as a MISS. ' : 'Recorded. ') + `${r.rescored_cases} other case(s) re-scored; AI re-assessing.`, 6000); await loadMeta(); viewCase(id); });
+  $('#ocgo').onclick = () => act(async () => { const r = await api(`/cases/${id}/outcome`, 'POST', { outcome, reason: $('#oc').value }); closeModal();
+    const sugg = r.suggested_rules && r.suggested_rules.length ? ` 🤖 ${r.suggested_rules.length} candidate rule(s) mined — review them in the Rules tab.` : '';
+    toast((fraud && r.missed_by_system ? 'Recorded as a MISS. ' : 'Recorded. ') + `${r.rescored_cases} other case(s) re-scored; AI re-assessing.` + sugg, 8000);
+    await loadMeta(); viewCase(id); });
 }
 async function retract(id) { if (!confirm('Retract this outcome? Assessments quoting it are purged and regenerated.')) return; await act(async () => { await api(`/cases/${id}/outcome`, 'DELETE'); toast('Outcome retracted'); await loadMeta(); viewCase(id); }); }
 async function reassess(id) { toast('Re-assessing… free models can take a minute'); await act(async () => { await api(`/cases/${id}/assess`, 'POST'); toast('Assessment updated'); viewCase(id); }); }
@@ -336,13 +339,39 @@ async function viewRules() {
   if (!RS.fields) RS.fields = (await api('/rules/fields')).fields;
   const q = `label_mode=${RS.mode}&positive_at=${RS.pos}` + (RS.minl ? `&min_level=${RS.minl}` : '');
   RS.lb = await act(() => api('/rules/leaderboard?' + q)); if (!RS.lb || gone()) return;
+  RS.suggested = await api('/rules/suggested');
   drawRules();
+}
+function suggestedBanner() {
+  const sug = RS.suggested || [];
+  if (!sug.length) return '';
+  return `<div class="card" style="border:1px solid var(--brand,#6a5cff);margin-bottom:12px">
+    <h2>🤖 ${sug.length} AI-suggested rule${sug.length > 1 ? 's' : ''}, pending review</h2>
+    <div class="small mut" style="margin-bottom:8px">Mined from a confirmed FRAUD outcome — never active on their own. Review the pattern and its backtest, then activate or dismiss.</div>
+    ${sug.map(r => {
+      const st = r.mined_stats || {}, bt = st.backtest;
+      return `<div class="ind" style="align-items:flex-start">
+        <div class="body">
+          <span class="rid ${r.level}">${r.rule_id}</span> <b>${esc(r.name)}</b>
+          <div class="small mut">from <a href="#/case/${st.source_case_id || ''}">${esc(st.source_case_id || '?')}</a> (confirmed fraud) · ${esc(r.logic)}</div>
+          <div class="small">Fires on ${st.k_fraud}/${st.n_fraud} confirmed fraud case(s), ${((st.background_rate || 0) * 100).toFixed(0)}% of the rest of the queue (lift ${st.lift}x)${bt ? ` · outcomes backtest: precision ${withCI(bt.precision, bt.precision_ci)}, recall ${withCI(bt.recall, bt.recall_ci)} (n=${bt.n})` : ''}</div>
+        </div>
+        <div class="bar" style="flex-wrap:nowrap"><button class="sm ok" onclick="activateSuggested('${r.rule_id}')">Activate</button><button class="sm danger" onclick="dismissSuggested('${r.rule_id}')">Dismiss</button></div>
+      </div>`;
+    }).join('')}</div>`;
+}
+async function activateSuggested(id) {
+  await act(async () => { await api('/rules/' + id, 'PUT', { status: 'active' }); toast(id + ' activated — now scoring the live queue'); await viewRules(); });
+}
+async function dismissSuggested(id) {
+  await act(async () => { await api('/rules/' + id, 'DELETE'); toast(id + ' dismissed'); await viewRules(); });
 }
 function drawRules() {
   const lb = RS.lb, rows = [...lb.rows].sort((a, b) => RS.sort === 'id' ? a.rule_id.localeCompare(b.rule_id) : ((b[RS.sort] ?? -1) - (a[RS.sort] ?? -1)));
   const th = (k, l) => `<th class="s ${'num'}" onclick="RS.sort='${k}';drawRules()">${l}${RS.sort === k ? ' ▼' : ''}</th>`;
   view.innerHTML = `<div class="bar"><h1 style="flex:1">Rules</h1><button class="primary" onclick="newRule()">+ New rule</button></div>
   <div class="sub">Every rule that scores cases, its precision/recall against labels, and the tools to create or tune one. Changes apply to all cases immediately.</div>
+  ${suggestedBanner()}
   <div class="card"><div class="filters">
     <label style="min-width:330px">Labels<select id="r_mode">${Object.entries(MODE_LABEL).map(([k, v]) => `<option value="${k}" ${RS.mode === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <label>Positive = risk level ≥<select id="r_pos">${['MEDIUM', 'HIGH', 'CRITICAL'].map(x => `<option ${RS.pos === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
